@@ -1,0 +1,3 @@
+[submodule ".vscode"]
+	path = .vscode
+	url = https://gitlab.com/c-data-structures1/.vscode.git
