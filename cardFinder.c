@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 const char AMD_VENDOR[]   = "0x1002";
@@ -72,6 +73,9 @@ int8_t findCardID() {
                 exit(0);
             }
             return IDs[i]; // Return valid AMD card ID
+        } else {
+            while (wait > 0)
+                ;
         }
     }
     exit(0);
@@ -107,6 +111,21 @@ int main(int argc, char const *argv[]) {
     snprintf(hwmonControllerPath, stringLenght, "%s/%s/%s%d", cardPath, HWMON_PATH, HWMON_PREFIX, hwmonID);
 
     printf("%s\n", hwmonControllerPath);
+
+    // Temperature reading loop
+    char commandPreset[] = "cat %s/%s";
+    stringLenght         = strlen(commandPreset) - 2 * 2 + strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR);
+    char command[stringLenght + 1];
+    snprintf(command, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
+    FILE *tempReadingOutput;
+    char temperature[3];
+    while (1) {
+        tempReadingOutput = popen(command, "r");
+        fgets(temperature, sizeof(temperature), tempReadingOutput);
+        printf("Temperature it's: %sC°\n", temperature);
+        pclose(tempReadingOutput);
+        sleep(2);
+    }
 
     return 0;
 }
