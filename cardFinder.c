@@ -24,12 +24,15 @@
 
 const char AMD_VENDOR[]   = "0x1002";
 const char DEVICES_PATH[] = "/sys/class/drm";
+const char HWMON_PREFIX[] = "hwmon";
+const char HWMON_PATH[]   = "device/hwmon";
 const char CARD_PREFIX[]  = "card";
+const char TEMP_SENSOR[]  = "temp1_input";
 
 /**
  * Find a AMD GPU and return it's ID
 */
-int findCardID() {
+int8_t findCardID() {
     /**
      * Command composed by command preset minus args +
      * DEVICES_PATH +
@@ -74,8 +77,36 @@ int findCardID() {
     exit(0);
 }
 
+// Search hwmon id for the specified card
+int8_t findHwmon(uint8_t cardID) {
+    char commandPreset[]  = "ls -1 /sys/class/drm/%s%d/%s/ | sed {'s/%s//'}";
+    uint8_t commandLenght = 60 - 2 * 4 + strlen(CARD_PREFIX) + strlen(HWMON_PATH) + strlen(HWMON_PREFIX) + 2;
+    char command[commandLenght + 1];
+    snprintf(command, commandLenght, commandPreset, CARD_PREFIX, cardID, HWMON_PATH, HWMON_PREFIX);
+    // Execute command
+    FILE *cmd = popen(command, "r");
+    char hwmonID[2];
+    if (fgets(hwmonID, sizeof(hwmonID), cmd) == NULL) {
+        return -1; // In case of missing hwmon
+    }
+    pclose(cmd);
+    return atoi(hwmonID);
+}
+
 int main(int argc, char const *argv[]) {
-    printf("%s/card%d\n", DEVICES_PATH, findCardID());
+    // Find card
+    int8_t cardID        = findCardID();
+    uint8_t stringLenght = strlen(DEVICES_PATH) + 1 + strlen(CARD_PREFIX) + 2;
+    char cardPath[stringLenght + 1];
+    snprintf(cardPath, stringLenght, "%s/%s%d\n", DEVICES_PATH, CARD_PREFIX, cardID);
+
+    // Find hwmon
+    int8_t hwmonID = findHwmon(cardID);
+    stringLenght   = strlen(cardPath) + 1 + strlen(HWMON_PATH) + 1 + strlen(HWMON_PREFIX) + 2;
+    char hwmonControllerPath[stringLenght + 1];
+    snprintf(hwmonControllerPath, stringLenght, "%s/%s/%s%d", cardPath, HWMON_PATH, HWMON_PREFIX, hwmonID);
+
+    printf("%s\n", hwmonControllerPath);
 
     return 0;
 }
