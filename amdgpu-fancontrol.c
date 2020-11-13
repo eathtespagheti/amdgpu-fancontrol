@@ -17,11 +17,13 @@
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <inttypes.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
+#include <wait.h>
 
 const char AMD_VENDOR[]   = "0x1002";
 const char DEVICES_PATH[] = "/sys/class/drm";
@@ -29,6 +31,84 @@ const char HWMON_PREFIX[] = "hwmon";
 const char HWMON_PATH[]   = "device/hwmon";
 const char CARD_PREFIX[]  = "card";
 const char TEMP_SENSOR[]  = "temp1_input";
+const char PWM_ENABLE[]   = "pwm1_enable";
+const char PWM[]          = "pwm1";
+uint8_t ZERO_RMP_ZONE     = 40;
+uint8_t TEMP_VALUE_100    = 64;
+uint8_t CONTROL_FREQUENCY = 1;
+int8_t ENABLED_CARD       = -1;
+int8_t CURRENT_HWMON      = -1;
+struct timespec WAIT_TIME = {
+    1, 0};
+
+/**
+ * Return fan speed value in percentage based on the card temperature
+*/
+uint8_t fanSpeeValue(uint8_t temp) {
+    if (temp <= ZERO_RMP_ZONE) {
+        return 0;
+    }
+    uint8_t fanSpeed = (100 / (TEMP_VALUE_100)) * temp;
+    return fanSpeed > 100 ? 100 : fanSpeed;
+}
+
+/**
+ * echo value inside the pwmControl file
+*/
+void writeToPWM(uint8_t cardID, uint8_t hwmonID, uint8_t value, char pwmControl[]) {
+    char commandPreset[]  = "echo \"%d\" > %s/%s%d/%s/%s%d/%s";
+    uint8_t commandLenght = strlen(commandPreset) - 2 * 8 + 3 + strlen(DEVICES_PATH) + 1 + strlen(CARD_PREFIX) + 2 + 1 + strlen(HWMON_PATH) + 1 + strlen(HWMON_PREFIX) + 2 + 1 + strlen(pwmControl);
+    char command[commandLenght + 1];
+    snprintf(command, commandLenght, commandPreset, value, DEVICES_PATH, CARD_PREFIX, cardID, HWMON_PATH, HWMON_PREFIX, hwmonID, pwmControl);
+    system(command);
+}
+
+/**
+ * echo value inside the pwm_enable
+*/
+void writeToPwmEnable(uint8_t cardID, uint8_t hwmonID, uint8_t value) {
+    writeToPWM(cardID, hwmonID, value, PWM_ENABLE);
+}
+
+/**
+ * Restore automatic fan speed on the last
+ * manual control enabled card
+*/
+void restoreAutoFan() {
+    if (ENABLED_CARD != -1 && CURRENT_HWMON != -1) {
+        writeToPwmEnable(ENABLED_CARD, CURRENT_HWMON, 2);
+        ENABLED_CARD  = -1;
+        CURRENT_HWMON = -1;
+    }
+}
+
+/**
+ * Enable manual fan control for cardId on hwmonID
+ * Launching this will disable manual fan speed on every card where this
+ * function has been called previously
+*/
+void enableManualFan(uint8_t cardID, uint8_t hwmonID) {
+    restoreAutoFan();
+    writeToPwmEnable(cardID, hwmonID, 1);
+    ENABLED_CARD  = cardID;
+    CURRENT_HWMON = hwmonID;
+}
+
+/**
+ * Manage signal that require stopping or killing amdgpu-fancontrol
+*/
+void signalHandler(int signal) {
+    restoreAutoFan();
+    kill(signal, getpid());
+}
+
+/**
+ * Set fan speed in percantage for the card
+ * Works only after calling enableManualFan on said card
+*/
+void setFanSpeed(uint8_t value) {
+    writeToPWM(ENABLED_CARD, CURRENT_HWMON, value * 2.55, PWM);
+}
 
 /**
  * Find a AMD GPU and return it's ID
@@ -98,6 +178,19 @@ int8_t findHwmon(uint8_t cardID) {
 }
 
 int main(int argc, char const *argv[]) {
+    if (argc > 1) {
+        TEMP_VALUE_100 = atoi(argv[1]);
+        if (argc > 2) {
+            ZERO_RMP_ZONE = atoi(argv[2]);
+            if (argc > 3) {
+                CONTROL_FREQUENCY = atoi(argv[3]);
+            }
+        }
+    }
+    WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
+    WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
+    printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nWait time it's %d seconds and %d nanoseconds ", TEMP_VALUE_100, ZERO_RMP_ZONE, WAIT_TIME.tv_sec, WAIT_TIME.tv_nsec);
+
     // Find card
     int8_t cardID        = findCardID();
     uint8_t stringLenght = strlen(DEVICES_PATH) + 1 + strlen(CARD_PREFIX) + 2;
@@ -110,8 +203,6 @@ int main(int argc, char const *argv[]) {
     char hwmonControllerPath[stringLenght + 1];
     snprintf(hwmonControllerPath, stringLenght, "%s/%s/%s%d", cardPath, HWMON_PATH, HWMON_PREFIX, hwmonID);
 
-    printf("%s\n", hwmonControllerPath);
-
     // Temperature reading loop
     char commandPreset[] = "cat %s/%s";
     stringLenght         = strlen(commandPreset) - 2 * 2 + strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR);
@@ -119,13 +210,25 @@ int main(int argc, char const *argv[]) {
     snprintf(command, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
     FILE *tempReadingOutput;
     char temperature[3];
+    uint8_t tempValue, fanspeed, newfanspeed;
+
+    enableManualFan(cardID, hwmonID);
+    fanspeed = 0;
+    setFanSpeed(fanspeed);
     while (1) {
         tempReadingOutput = popen(command, "r");
         fgets(temperature, sizeof(temperature), tempReadingOutput);
-        printf("Temperature it's: %sC°\n", temperature);
+        tempValue   = atoi(temperature);
+        newfanspeed = fanSpeeValue(tempValue);
+        if (newfanspeed != fanspeed) {
+            setFanSpeed(fanspeed);
+            fanspeed = newfanspeed;
+        }
+        printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
         pclose(tempReadingOutput);
-        sleep(2);
+        nanosleep(&WAIT_TIME, &WAIT_TIME);
     }
+    restoreAutoFan();
 
-    return 0;
+    exit(0);
 }
