@@ -98,8 +98,10 @@ void enableManualFan(uint8_t cardID, uint8_t hwmonID) {
  * Manage signal that require stopping or killing amdgpu-fancontrol
 */
 void signalHandler(int signal) {
+    printf("Received signal %d\n", signal);
     restoreAutoFan();
-    kill(signal, getpid());
+    kill(0, signal);
+    exit(0);
 }
 
 /**
@@ -178,6 +180,14 @@ int8_t findHwmon(uint8_t cardID) {
 }
 
 int main(int argc, char const *argv[]) {
+    // Manage signals
+    signal(SIGABRT, signalHandler);
+    signal(SIGSTOP, signalHandler);
+    signal(SIGINT, signalHandler);
+    signal(SIGUSR1, signalHandler);
+    signal(SIGUSR2, signalHandler);
+    
+    // Parse args
     if (argc > 1) {
         TEMP_VALUE_100 = atoi(argv[1]);
         if (argc > 2) {
@@ -212,6 +222,7 @@ int main(int argc, char const *argv[]) {
     char temperature[3];
     uint8_t tempValue, fanspeed, newfanspeed;
 
+    // Start monitoring card temperature
     enableManualFan(cardID, hwmonID);
     fanspeed = 0;
     setFanSpeed(fanspeed);
@@ -221,7 +232,7 @@ int main(int argc, char const *argv[]) {
         tempValue   = atoi(temperature);
         newfanspeed = fanSpeeValue(tempValue);
         if (newfanspeed != fanspeed) {
-            setFanSpeed(fanspeed);
+            setFanSpeed(newfanspeed);
             fanspeed = newfanspeed;
         }
         printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
