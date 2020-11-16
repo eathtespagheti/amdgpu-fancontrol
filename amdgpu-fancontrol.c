@@ -26,31 +26,32 @@
 #include <unistd.h>
 #include <wait.h>
 
-const char AMD_VENDOR[]   = "0x1002";
-const char DEVICES_PATH[] = "/sys/class/drm";
-const char HWMON_PREFIX[] = "hwmon";
-const char HWMON_PATH[]   = "device/hwmon";
-const char CARD_PREFIX[]  = "card";
-const char TEMP_SENSOR[]  = "temp1_input";
-const char PWM_ENABLE[]   = "pwm1_enable";
-const char PWM[]          = "pwm1";
-uint8_t ZERO_RMP_ZONE     = 40;
-uint8_t TEMP_VALUE_100    = 64;
-uint8_t CONTROL_FREQUENCY = 1;
-int8_t ENABLED_CARD       = -1;
-int8_t CURRENT_HWMON      = -1;
-bool VERBOSE              = true;
-struct timespec WAIT_TIME = {
+const char AMD_VENDOR[]       = "0x1002";
+const char DEVICES_PATH[]     = "/sys/class/drm";
+const char HWMON_PREFIX[]     = "hwmon";
+const char HWMON_PATH[]       = "device/hwmon";
+const char CARD_PREFIX[]      = "card";
+const char TEMP_SENSOR[]      = "temp1_input";
+const char PWM_ENABLE[]       = "pwm1_enable";
+const char PWM[]              = "pwm1";
+const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
+uint8_t ZERO_RMP_ZONE         = 35;
+uint8_t TEMP_VALUE_100        = 64;
+uint8_t CONTROL_FREQUENCY     = 1;
+int8_t ENABLED_CARD           = -1;
+int8_t CURRENT_HWMON          = -1;
+bool VERBOSE                  = true;
+struct timespec WAIT_TIME     = {
     1, 0};
 
 /**
  * Return fan speed value in percentage based on the card temperature
 */
-uint8_t fanSpeeValue(uint8_t temp) {
+uint8_t fanSpeedValue(uint8_t temp) {
     if (temp <= ZERO_RMP_ZONE) {
         return 0;
     }
-    uint8_t fanSpeed = (100 / (TEMP_VALUE_100)) * temp;
+    uint8_t fanSpeed = (100.0 / (TEMP_VALUE_100)) * temp;
     return fanSpeed > 100 ? 100 : fanSpeed;
 }
 
@@ -124,7 +125,7 @@ int8_t findCardID() {
      * CARD_PREFIX * 2 +
      * EOL
     */
-    char commandPreset[]     = "ls -1 %s | grep %s[:digit:]*$ | sed {'s/%s//'}";
+    char commandPreset[]     = "ls -1 %s | grep %s[[:digit:]]*$ | sed {'s/%s//'}";
     uint8_t maxCommandLenght = strlen(commandPreset) - 6 + strlen(DEVICES_PATH) + strlen(CARD_PREFIX) * 2 + 1;
     char command[maxCommandLenght];
     snprintf(command, maxCommandLenght, commandPreset, DEVICES_PATH, CARD_PREFIX, CARD_PREFIX);
@@ -248,7 +249,7 @@ int main(int argc, char const *argv[]) {
         tempReadingOutput = popen(command, "r");
         fgets(temperature, sizeof(temperature), tempReadingOutput);
         tempValue   = atoi(temperature);
-        newfanspeed = fanSpeeValue(tempValue);
+        newfanspeed = fanSpeedValue(tempValue);
         if (newfanspeed != fanspeed) {
             setFanSpeed(newfanspeed);
             fanspeed = newfanspeed;
