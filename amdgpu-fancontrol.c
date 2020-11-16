@@ -41,6 +41,7 @@ uint8_t CONTROL_FREQUENCY     = 1;
 int8_t ENABLED_CARD           = -1;
 int8_t CURRENT_HWMON          = -1;
 bool VERBOSE                  = true;
+int8_t WAIT_FOR_CHILD_TIME    = 3;
 struct timespec WAIT_TIME     = {
     1, 0};
 
@@ -160,7 +161,7 @@ int8_t findCardID() {
             return IDs[i]; // Return valid AMD card ID
         } else {
             while (wait > 0)
-                ;
+                sleep(WAIT_FOR_CHILD_TIME);
         }
     }
     exit(0);
