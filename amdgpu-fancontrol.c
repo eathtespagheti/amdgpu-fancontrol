@@ -18,6 +18,7 @@
  */
 #include <inttypes.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +39,7 @@ uint8_t TEMP_VALUE_100    = 64;
 uint8_t CONTROL_FREQUENCY = 1;
 int8_t ENABLED_CARD       = -1;
 int8_t CURRENT_HWMON      = -1;
+bool VERBOSE              = true;
 struct timespec WAIT_TIME = {
     1, 0};
 
@@ -179,14 +181,18 @@ int8_t findHwmon(uint8_t cardID) {
     return atoi(hwmonID);
 }
 
-int main(int argc, char const *argv[]) {
-    // Manage signals
+/**
+ * Call signal on various interrupting signals
+*/
+void signalManagement() {
     signal(SIGABRT, signalHandler);
     signal(SIGSTOP, signalHandler);
     signal(SIGINT, signalHandler);
     signal(SIGUSR1, signalHandler);
     signal(SIGUSR2, signalHandler);
-    
+}
+
+void parseArgs(int argc, char const *argv[]) {
     // Parse args
     if (argc > 1) {
         TEMP_VALUE_100 = atoi(argv[1]);
@@ -199,18 +205,30 @@ int main(int argc, char const *argv[]) {
     }
     WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
     WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
-    printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nWait time it's %d seconds and %d nanoseconds ", TEMP_VALUE_100, ZERO_RMP_ZONE, WAIT_TIME.tv_sec, WAIT_TIME.tv_nsec);
+
+    if (VERBOSE) {
+        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nWait time it's %d seconds and %d nanoseconds ", TEMP_VALUE_100, ZERO_RMP_ZONE, WAIT_TIME.tv_sec, WAIT_TIME.tv_nsec);
+    }
+}
+
+int main(int argc, char const *argv[]) {
+    // Manage signals
+    signalManagement();
+    // Read args
+    parseArgs(argc, argv);
 
     // Find card
     int8_t cardID        = findCardID();
     uint8_t stringLenght = strlen(DEVICES_PATH) + 1 + strlen(CARD_PREFIX) + 2;
     char cardPath[stringLenght + 1];
+    // Write card path
     snprintf(cardPath, stringLenght, "%s/%s%d\n", DEVICES_PATH, CARD_PREFIX, cardID);
 
     // Find hwmon
     int8_t hwmonID = findHwmon(cardID);
     stringLenght   = strlen(cardPath) + 1 + strlen(HWMON_PATH) + 1 + strlen(HWMON_PREFIX) + 2;
     char hwmonControllerPath[stringLenght + 1];
+    // Write hwmon path
     snprintf(hwmonControllerPath, stringLenght, "%s/%s/%s%d", cardPath, HWMON_PATH, HWMON_PREFIX, hwmonID);
 
     // Temperature reading loop
@@ -226,7 +244,7 @@ int main(int argc, char const *argv[]) {
     enableManualFan(cardID, hwmonID);
     fanspeed = 0;
     setFanSpeed(fanspeed);
-    while (1) {
+    while (true) {
         tempReadingOutput = popen(command, "r");
         fgets(temperature, sizeof(temperature), tempReadingOutput);
         tempValue   = atoi(temperature);
@@ -235,7 +253,9 @@ int main(int argc, char const *argv[]) {
             setFanSpeed(newfanspeed);
             fanspeed = newfanspeed;
         }
-        printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
+        if (VERBOSE) {
+            printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
+        }
         pclose(tempReadingOutput);
         nanosleep(&WAIT_TIME, &WAIT_TIME);
     }
