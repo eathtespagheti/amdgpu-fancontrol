@@ -124,7 +124,7 @@ int8_t findCardID() {
      * CARD_PREFIX * 2 +
      * EOL
     */
-    char commandPreset[]     = "ls -1 %s | grep %s[0-9]*$ | sed {'s/%s//'}";
+    char commandPreset[]     = "ls -1 %s | grep %s[:digit:]*$ | sed {'s/%s//'}";
     uint8_t maxCommandLenght = strlen(commandPreset) - 6 + strlen(DEVICES_PATH) + strlen(CARD_PREFIX) * 2 + 1;
     char command[maxCommandLenght];
     snprintf(command, maxCommandLenght, commandPreset, DEVICES_PATH, CARD_PREFIX, CARD_PREFIX);
