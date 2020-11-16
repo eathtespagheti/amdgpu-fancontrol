@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <wait.h>
 
+// Paths
 const char AMD_VENDOR[]       = "0x1002";
 const char DEVICES_PATH[]     = "/sys/class/drm";
 const char HWMON_PREFIX[]     = "hwmon";
@@ -35,14 +36,18 @@ const char TEMP_SENSOR[]      = "temp1_input";
 const char PWM_ENABLE[]       = "pwm1_enable";
 const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
-uint8_t ZERO_RMP_ZONE         = 35;
-uint8_t TEMP_VALUE_100        = 64;
-uint8_t CONTROL_FREQUENCY     = 1;
-int8_t ENABLED_CARD           = -1;
-int8_t CURRENT_HWMON          = -1;
-bool VERBOSE                  = true;
-int8_t WAIT_FOR_CHILD_TIME    = 3;
-struct timespec WAIT_TIME     = {
+
+// Variables
+uint8_t ZERO_RMP_ZONE      = 40;
+uint8_t ZERO_RMP_DELTA     = 4;
+uint8_t TEMP_VALUE_100     = 80;
+uint8_t CONTROL_FREQUENCY  = 1;
+int8_t ENABLED_CARD        = -1;
+int8_t CURRENT_HWMON       = -1;
+char *READ_TEMP_COMMAND    = NULL;
+bool VERBOSE               = true;
+int8_t WAIT_FOR_CHILD_TIME = 3;
+struct timespec WAIT_TIME  = {
     1, 0};
 
 /**
@@ -209,8 +214,20 @@ void parseArgs(int argc, char const *argv[]) {
     WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
 
     if (VERBOSE) {
-        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nWait time it's %d seconds and %d nanoseconds ", TEMP_VALUE_100, ZERO_RMP_ZONE, WAIT_TIME.tv_sec, WAIT_TIME.tv_nsec);
+        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nWait time it's %d seconds and %d nanoseconds\n", TEMP_VALUE_100, ZERO_RMP_ZONE, WAIT_TIME.tv_sec, WAIT_TIME.tv_nsec);
     }
+}
+
+/**
+ * Return card temperature, works only after wiriting read command in READ_TEMP_COMMAND
+*/
+uint8_t readTemperature() {
+    FILE *tempReadingOutput;
+    char temperature[3];
+    tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
+    fgets(temperature, sizeof(temperature), tempReadingOutput);
+    pclose(tempReadingOutput);
+    return atoi(temperature);
 }
 
 int main(int argc, char const *argv[]) {
@@ -236,32 +253,44 @@ int main(int argc, char const *argv[]) {
     // Temperature reading loop
     char commandPreset[] = "cat %s/%s";
     stringLenght         = strlen(commandPreset) - 2 * 2 + strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR);
-    char command[stringLenght + 1];
-    snprintf(command, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
-    FILE *tempReadingOutput;
-    char temperature[3];
+    READ_TEMP_COMMAND    = calloc(stringLenght + 1, sizeof(*READ_TEMP_COMMAND));
+    snprintf(READ_TEMP_COMMAND, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
     uint8_t tempValue, fanspeed, newfanspeed;
 
     // Start monitoring card temperature
     enableManualFan(cardID, hwmonID);
-    fanspeed = 0;
+    fanspeed = 100;
     setFanSpeed(fanspeed);
     while (true) {
-        tempReadingOutput = popen(command, "r");
-        fgets(temperature, sizeof(temperature), tempReadingOutput);
-        tempValue   = atoi(temperature);
+        tempValue   = readTemperature();
         newfanspeed = fanSpeedValue(tempValue);
-        if (newfanspeed != fanspeed) {
-            setFanSpeed(newfanspeed);
-            fanspeed = newfanspeed;
-        }
         if (VERBOSE) {
             printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
         }
-        pclose(tempReadingOutput);
+        if (newfanspeed != fanspeed) {
+            setFanSpeed(newfanspeed);
+            if (tempValue < ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
+                if (VERBOSE) {
+                    printf("Exit from Zero RPM Mode\n");
+                }
+                uint8_t targetTemp      = ZERO_RMP_ZONE - ZERO_RMP_DELTA;
+                uint8_t tempTemperature = readTemperature();
+                while (tempTemperature <= tempValue && tempTemperature > targetTemp) {
+                    if (VERBOSE) {
+                        printf("Temperature it's: %dC° - Waiting for temps to reach %d\n", tempTemperature, targetTemp);
+                    }
+                    nanosleep(&WAIT_TIME, &WAIT_TIME);
+                    tempTemperature = readTemperature();
+                }
+            }
+            fanspeed = newfanspeed;
+        }
         nanosleep(&WAIT_TIME, &WAIT_TIME);
     }
     restoreAutoFan();
 
+    if (READ_TEMP_COMMAND != NULL) {
+        free(READ_TEMP_COMMAND);
+    }
     exit(0);
 }
