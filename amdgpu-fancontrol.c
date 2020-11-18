@@ -64,7 +64,7 @@ uint8_t fanSpeedValue(uint8_t temp) {
 /**
  * echo value inside the pwmControl file
 */
-void writeToPWM(uint8_t cardID, uint8_t hwmonID, uint8_t value, char pwmControl[]) {
+void writeToPWM(uint8_t cardID, uint8_t hwmonID, uint8_t value, const char pwmControl[]) {
     char commandPreset[]  = "echo \"%d\" > %s/%s%d/%s/%s%d/%s";
     uint8_t commandLenght = strlen(commandPreset) - 2 * 8 + 3 + strlen(DEVICES_PATH) + 1 + strlen(CARD_PREFIX) + 2 + 1 + strlen(HWMON_PATH) + 1 + strlen(HWMON_PREFIX) + 2 + 1 + strlen(pwmControl);
     char command[commandLenght + 1];
@@ -107,6 +107,9 @@ void enableManualFan(uint8_t cardID, uint8_t hwmonID) {
  * Manage signal that require stopping or killing amdgpu-fancontrol
 */
 void signalHandler(int signal) {
+    if (signal == SIGCHLD) {
+        return;
+    }
     printf("Received signal %d\n", signal);
     restoreAutoFan();
     kill(0, signal);
@@ -165,8 +168,9 @@ int8_t findCardID() {
             }
             return IDs[i]; // Return valid AMD card ID
         } else {
-            while (wait > 0)
-                sleep(WAIT_FOR_CHILD_TIME);
+            while (1) {
+                pause();
+            }
         }
     }
     exit(0);
@@ -197,6 +201,7 @@ void signalManagement() {
     signal(SIGINT, signalHandler);
     signal(SIGUSR1, signalHandler);
     signal(SIGUSR2, signalHandler);
+    signal(SIGCHLD, signalHandler);
 }
 
 void parseArgs(int argc, char const *argv[]) {
@@ -255,21 +260,21 @@ int main(int argc, char const *argv[]) {
     stringLenght         = strlen(commandPreset) - 2 * 2 + strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR);
     READ_TEMP_COMMAND    = calloc(stringLenght + 1, sizeof(*READ_TEMP_COMMAND));
     snprintf(READ_TEMP_COMMAND, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
-    uint8_t tempValue, fanspeed, newfanspeed;
+    uint8_t tempValue, newTempValue, fanspeed;
 
     // Start monitoring card temperature
     enableManualFan(cardID, hwmonID);
-    fanspeed = 100;
+    tempValue = readTemperature();
+    fanspeed  = fanSpeedValue(tempValue);
     setFanSpeed(fanspeed);
     while (true) {
-        tempValue   = readTemperature();
-        newfanspeed = fanSpeedValue(tempValue);
-        if (VERBOSE) {
-            printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
-        }
-        if (newfanspeed != fanspeed) {
-            setFanSpeed(newfanspeed);
-            if (tempValue < ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
+        newTempValue = readTemperature();
+        // Only if temperature changes
+        if (newTempValue != tempValue) {
+            tempValue = newTempValue;
+            fanspeed  = fanSpeedValue(tempValue);
+            setFanSpeed(fanspeed);
+            if (tempValue > ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
                 if (VERBOSE) {
                     printf("Exit from Zero RPM Mode\n");
                 }
@@ -283,7 +288,10 @@ int main(int argc, char const *argv[]) {
                     tempTemperature = readTemperature();
                 }
             }
-            fanspeed = newfanspeed;
+        }
+        // Log values
+        if (VERBOSE) {
+            printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
         }
         nanosleep(&WAIT_TIME, &WAIT_TIME);
     }
