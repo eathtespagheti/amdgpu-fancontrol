@@ -221,6 +221,18 @@ void parseArgs(int argc, char const *argv[]) {
 /**
  * Return card temperature, works only after wiriting read command in READ_TEMP_COMMAND
 */
+uint8_t getTempValue() {
+    FILE *tempReadingOutput;
+    char temperature[3];
+    tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
+    fgets(temperature, sizeof(temperature), tempReadingOutput);
+    pclose(tempReadingOutput);
+    return atoi(temperature);
+}
+
+/**
+ * Return card temperature from a forked process, works only after wiriting read command in READ_TEMP_COMMAND
+*/
 uint8_t readTemperature() {
     int status, pipes[2];
     uint8_t tempValue;
@@ -228,12 +240,7 @@ uint8_t readTemperature() {
 
     int pid = fork();
     if (pid) {
-        FILE *tempReadingOutput;
-        char temperature[3];
-        tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
-        fgets(temperature, sizeof(temperature), tempReadingOutput);
-        pclose(tempReadingOutput);
-        tempValue = atoi(temperature);
+        tempValue = getTempValue();
         // Write to pipe
         write(pipes[1], &tempValue, sizeof(tempValue));
         _exit(0);
