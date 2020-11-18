@@ -38,15 +38,15 @@ const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
-uint8_t ZERO_RMP_ZONE      = 35;
-uint8_t ZERO_RMP_DELTA     = 4;
-uint8_t TEMP_VALUE_100     = 80;
-uint8_t CONTROL_FREQUENCY  = 1;
-int8_t ENABLED_CARD        = -1;
-int8_t CURRENT_HWMON       = -1;
-char *READ_TEMP_COMMAND    = NULL;
-bool VERBOSE               = true;
-struct timespec WAIT_TIME  = {
+uint8_t ZERO_RMP_ZONE     = 35;
+uint8_t ZERO_RMP_DELTA    = 4;
+uint8_t TEMP_VALUE_100    = 80;
+uint8_t CONTROL_FREQUENCY = 1;
+int8_t ENABLED_CARD       = -1;
+int8_t CURRENT_HWMON      = -1;
+char *READ_TEMP_COMMAND   = NULL;
+bool VERBOSE              = true;
+struct timespec WAIT_TIME = {
     1, 0};
 
 /**
@@ -222,12 +222,30 @@ void parseArgs(int argc, char const *argv[]) {
  * Return card temperature, works only after wiriting read command in READ_TEMP_COMMAND
 */
 uint8_t readTemperature() {
-    FILE *tempReadingOutput;
-    char temperature[3];
-    tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
-    fgets(temperature, sizeof(temperature), tempReadingOutput);
-    pclose(tempReadingOutput);
-    return atoi(temperature);
+    int status, pipes[2];
+    uint8_t tempValue;
+    pipe(pipes);
+
+    int pid = fork();
+    if (pid) {
+        FILE *tempReadingOutput;
+        char temperature[3];
+        tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
+        fgets(temperature, sizeof(temperature), tempReadingOutput);
+        pclose(tempReadingOutput);
+        tempValue = atoi(temperature);
+        // Write to pipe
+        write(pipes[1], &tempValue, sizeof(tempValue));
+        _exit(0);
+    } else {
+        waitpid(pid, &status, 0);
+        // Read from pipe
+        read(pipes[0], &tempValue, sizeof(tempValue));
+    }
+    close(pipes[0]);
+    close(pipes[1]);
+
+    return tempValue;
 }
 
 int main(int argc, char const *argv[]) {
