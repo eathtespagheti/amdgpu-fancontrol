@@ -38,7 +38,7 @@ const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
-uint8_t ZERO_RMP_ZONE      = 40;
+uint8_t ZERO_RMP_ZONE      = 35;
 uint8_t ZERO_RMP_DELTA     = 4;
 uint8_t TEMP_VALUE_100     = 80;
 uint8_t CONTROL_FREQUENCY  = 1;
@@ -274,7 +274,13 @@ int main(int argc, char const *argv[]) {
             tempValue = newTempValue;
             fanspeed  = fanSpeedValue(tempValue);
             setFanSpeed(fanspeed);
-            if (tempValue > ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
+            // Log values
+            if (VERBOSE) {
+                printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
+            }
+
+            // Zero RPM management
+            if (tempValue > ZERO_RMP_ZONE && tempValue < ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
                 if (VERBOSE) {
                     printf("Exit from Zero RPM Mode\n");
                 }
@@ -288,10 +294,6 @@ int main(int argc, char const *argv[]) {
                     tempTemperature = readTemperature();
                 }
             }
-        }
-        // Log values
-        if (VERBOSE) {
-            printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
         }
         nanosleep(&WAIT_TIME, &WAIT_TIME);
     }
