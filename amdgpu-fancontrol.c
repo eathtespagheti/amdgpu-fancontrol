@@ -255,6 +255,18 @@ uint8_t readTemperature() {
     return tempValue;
 }
 
+/**
+ * Wait for temperature to change and return it's value
+ */
+uint8_t getNewTemperature(uint8_t lastTemperature) {
+    uint8_t temp = readTemperature();
+    while (temp == lastTemperature) {
+        nanosleep(&WAIT_TIME, &WAIT_TIME);
+        temp = readTemperature();
+    }
+    return temp;
+}
+
 int main(int argc, char const *argv[]) {
     // Read args
     parseArgs(argc, argv);
@@ -281,7 +293,7 @@ int main(int argc, char const *argv[]) {
     stringLenght         = strlen(commandPreset) - 2 * 2 + strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR);
     READ_TEMP_COMMAND    = calloc(stringLenght + 1, sizeof(*READ_TEMP_COMMAND));
     snprintf(READ_TEMP_COMMAND, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
-    uint8_t tempValue, newTempValue, fanspeed;
+    uint8_t tempValue, fanspeed;
 
     // Start monitoring card temperature
     enableManualFan(cardID, hwmonID);
@@ -289,34 +301,28 @@ int main(int argc, char const *argv[]) {
     fanspeed  = fanSpeedValue(tempValue);
     setFanSpeed(fanspeed);
     while (true) {
-        newTempValue = readTemperature();
-        // Only if temperature changes
-        if (newTempValue != tempValue) {
-            tempValue = newTempValue;
-            fanspeed  = fanSpeedValue(tempValue);
-            setFanSpeed(fanspeed);
-            // Log values
-            if (VERBOSE) {
-                printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
-            }
+        tempValue = getNewTemperature(tempValue);
+        fanspeed  = fanSpeedValue(tempValue);
+        setFanSpeed(fanspeed);
+        // Log values
+        if (VERBOSE) {
+            printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
+        }
 
-            // Zero RPM management
-            if (tempValue > ZERO_RMP_ZONE && tempValue < ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
+        // Zero RPM management
+        if (tempValue > ZERO_RMP_ZONE && tempValue < ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
+            if (VERBOSE) {
+                printf("Exit from Zero RPM Mode\n");
+            }
+            uint8_t targetTemp      = ZERO_RMP_ZONE - ZERO_RMP_DELTA;
+            uint8_t tempTemperature = getNewTemperature(tempTemperature);
+            while (tempTemperature <= tempValue && tempTemperature > targetTemp) {
                 if (VERBOSE) {
-                    printf("Exit from Zero RPM Mode\n");
+                    printf("Temperature it's: %dC° - Waiting for temps to reach %d\n", tempTemperature, targetTemp);
                 }
-                uint8_t targetTemp      = ZERO_RMP_ZONE - ZERO_RMP_DELTA;
-                uint8_t tempTemperature = readTemperature();
-                while (tempTemperature <= tempValue && tempTemperature > targetTemp) {
-                    if (VERBOSE) {
-                        printf("Temperature it's: %dC° - Waiting for temps to reach %d\n", tempTemperature, targetTemp);
-                    }
-                    nanosleep(&WAIT_TIME, &WAIT_TIME);
-                    tempTemperature = readTemperature();
-                }
+                tempTemperature = getNewTemperature(tempTemperature);
             }
         }
-        nanosleep(&WAIT_TIME, &WAIT_TIME);
     }
     restoreAutoFan();
 
