@@ -110,10 +110,7 @@ void signalHandler(int signal) {
     if (signal == SIGCHLD) {
         return;
     }
-    if (VERBOSE) {
-        printf("Received signal %d\n", signal);
-    }
-
+    // Works only for childs
     restoreAutoFan();
     exit(0);
 }
@@ -199,9 +196,8 @@ int8_t findHwmon(uint8_t cardID) {
  * Call signal on various interrupting signals
 */
 void childSignalsManagement() {
-    signal(SIGABRT, signalHandler);
-    signal(SIGSTOP, signalHandler);
     signal(SIGINT, signalHandler);
+    signal(SIGQUIT, signalHandler);
 }
 
 void parseArgs(int argc, char const *argv[]) {
