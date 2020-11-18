@@ -103,7 +103,7 @@ void enableManualFan(uint8_t cardID, uint8_t hwmonID) {
 }
 
 /**
- * Manage signal that require stopping or killing amdgpu-fancontrol
+ * Manage signal that require stopping amdgpu-fancontrol
 */
 void signalHandler(int signal) {
     if (signal == SIGCHLD) {
