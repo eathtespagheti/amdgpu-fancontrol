@@ -167,7 +167,7 @@ int8_t findCardID() {
             return IDs[i]; // Return valid AMD card ID
         } else {
             signal(SIGCHLD, signalHandler);
-            while (1) {
+            while (true) {
                 pause();
             }
         }
@@ -231,38 +231,13 @@ uint8_t getTempValue() {
 }
 
 /**
- * Return card temperature from a forked process, works only after wiriting read command in READ_TEMP_COMMAND
-*/
-uint8_t readTemperature() {
-    int status, pipes[2];
-    uint8_t tempValue;
-    pipe(pipes);
-
-    int pid = fork();
-    if (pid) {
-        tempValue = getTempValue();
-        // Write to pipe
-        write(pipes[1], &tempValue, sizeof(tempValue));
-        _exit(0);
-    } else {
-        waitpid(pid, &status, 0);
-        // Read from pipe
-        read(pipes[0], &tempValue, sizeof(tempValue));
-    }
-    close(pipes[0]);
-    close(pipes[1]);
-
-    return tempValue;
-}
-
-/**
  * Wait for temperature to change and return it's value
  */
 uint8_t getNewTemperature(uint8_t lastTemperature) {
-    uint8_t temp = readTemperature();
+    uint8_t temp = getTempValue();
     while (temp == lastTemperature) {
         nanosleep(&WAIT_TIME, &WAIT_TIME);
-        temp = readTemperature();
+        temp = getTempValue();
     }
     return temp;
 }
@@ -297,7 +272,7 @@ int main(int argc, char const *argv[]) {
 
     // Start monitoring card temperature
     enableManualFan(cardID, hwmonID);
-    tempValue = readTemperature();
+    tempValue = getTempValue();
     fanspeed  = fanSpeedValue(tempValue);
     setFanSpeed(fanspeed);
     while (true) {
