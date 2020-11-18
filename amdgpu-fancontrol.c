@@ -17,7 +17,6 @@
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <inttypes.h>
-#include <linux/inotify.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -39,7 +38,7 @@ const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
-uint8_t ZERO_RMP_ZONE      = 35;
+uint8_t ZERO_RMP_ZONE      = 40;
 uint8_t ZERO_RMP_DELTA     = 4;
 uint8_t TEMP_VALUE_100     = 80;
 uint8_t CONTROL_FREQUENCY  = 1;
@@ -237,10 +236,6 @@ void parseArgs(int argc, char const *argv[]) {
  * Return card temperature, works only after wiriting read command in READ_TEMP_COMMAND
 */
 uint8_t getTempValue() {
-    // int fileDescriptor  = inotify_init();
-    // int writeDescriptor = inotify_add_watch(fileDescriptor, "")
-
-    //
     FILE *
         tempReadingOutput;
     char temperature[3];
@@ -248,7 +243,6 @@ uint8_t getTempValue() {
     fgets(temperature, sizeof(temperature), tempReadingOutput);
     pclose(tempReadingOutput);
     return atoi(temperature);
-    //
 }
 
 /**
