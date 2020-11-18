@@ -93,6 +93,20 @@ void restoreAutoFan() {
 }
 
 /**
+ * Safely quit from program
+ */
+void quit() {
+    if (READ_TEMP_COMMAND != NULL) {
+        free(READ_TEMP_COMMAND);
+    }
+    if (TEMP_SENSOR_LOCATION != NULL) {
+        free(TEMP_SENSOR_LOCATION);
+    }
+    restoreAutoFan();
+    exit(0);
+}
+
+/**
  * Enable manual fan control for cardId on hwmonID
  * Launching this will disable manual fan speed on every card where this
  * function has been called previously
@@ -112,8 +126,7 @@ void signalHandler(int signal) {
         return;
     }
     // Works only for childs
-    restoreAutoFan();
-    exit(0);
+    quit();
 }
 
 /**
@@ -311,13 +324,6 @@ int main(int argc, char const *argv[]) {
             }
         }
     }
-    restoreAutoFan();
 
-    if (READ_TEMP_COMMAND != NULL) {
-        free(READ_TEMP_COMMAND);
-    }
-    if (TEMP_SENSOR_LOCATION != NULL) {
-        free(TEMP_SENSOR_LOCATION);
-    }
-    exit(0);
+    quit();
 }
