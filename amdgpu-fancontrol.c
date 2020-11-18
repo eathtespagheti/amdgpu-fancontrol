@@ -168,6 +168,7 @@ int8_t findCardID() {
             }
             return IDs[i]; // Return valid AMD card ID
         } else {
+            signal(SIGCHLD, signalHandler);
             while (1) {
                 pause();
             }
@@ -199,9 +200,6 @@ void signalManagement() {
     signal(SIGABRT, signalHandler);
     signal(SIGSTOP, signalHandler);
     signal(SIGINT, signalHandler);
-    signal(SIGUSR1, signalHandler);
-    signal(SIGUSR2, signalHandler);
-    signal(SIGCHLD, signalHandler);
 }
 
 void parseArgs(int argc, char const *argv[]) {
