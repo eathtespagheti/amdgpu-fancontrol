@@ -17,6 +17,7 @@
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <inttypes.h>
+#include <linux/inotify.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -38,15 +39,16 @@ const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
-uint8_t ZERO_RMP_ZONE     = 35;
-uint8_t ZERO_RMP_DELTA    = 4;
-uint8_t TEMP_VALUE_100    = 80;
-uint8_t CONTROL_FREQUENCY = 1;
-int8_t ENABLED_CARD       = -1;
-int8_t CURRENT_HWMON      = -1;
-char *READ_TEMP_COMMAND   = NULL;
-bool VERBOSE              = true;
-struct timespec WAIT_TIME = {
+uint8_t ZERO_RMP_ZONE      = 35;
+uint8_t ZERO_RMP_DELTA     = 4;
+uint8_t TEMP_VALUE_100     = 80;
+uint8_t CONTROL_FREQUENCY  = 1;
+int8_t ENABLED_CARD        = -1;
+int8_t CURRENT_HWMON       = -1;
+char *READ_TEMP_COMMAND    = NULL;
+char *TEMP_SENSOR_LOCATION = NULL;
+bool VERBOSE               = true;
+struct timespec WAIT_TIME  = {
     1, 0};
 
 /**
@@ -222,12 +224,18 @@ void parseArgs(int argc, char const *argv[]) {
  * Return card temperature, works only after wiriting read command in READ_TEMP_COMMAND
 */
 uint8_t getTempValue() {
-    FILE *tempReadingOutput;
+    // int fileDescriptor  = inotify_init();
+    // int writeDescriptor = inotify_add_watch(fileDescriptor, "")
+
+    //
+    FILE *
+        tempReadingOutput;
     char temperature[3];
     tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
     fgets(temperature, sizeof(temperature), tempReadingOutput);
     pclose(tempReadingOutput);
     return atoi(temperature);
+    //
 }
 
 /**
@@ -263,11 +271,15 @@ int main(int argc, char const *argv[]) {
     // Write hwmon path
     snprintf(hwmonControllerPath, stringLenght, "%s/%s/%s%d", cardPath, HWMON_PATH, HWMON_PREFIX, hwmonID);
 
+    // Temperature sensor location
+    stringLenght         = strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR) + 1;
+    TEMP_SENSOR_LOCATION = calloc(stringLenght + 1, sizeof(*TEMP_SENSOR_LOCATION));
+    snprintf(TEMP_SENSOR_LOCATION, stringLenght, "%s/%s", hwmonControllerPath, TEMP_SENSOR);
     // Temperature reading loop
-    char commandPreset[] = "cat %s/%s";
-    stringLenght         = strlen(commandPreset) - 2 * 2 + strlen(hwmonControllerPath) + 1 + strlen(TEMP_SENSOR);
+    char commandPreset[] = "cat %s";
+    stringLenght         = strlen(commandPreset) + 1 - 2 + strlen(TEMP_SENSOR_LOCATION);
     READ_TEMP_COMMAND    = calloc(stringLenght + 1, sizeof(*READ_TEMP_COMMAND));
-    snprintf(READ_TEMP_COMMAND, stringLenght, commandPreset, hwmonControllerPath, TEMP_SENSOR);
+    snprintf(READ_TEMP_COMMAND, stringLenght, commandPreset, TEMP_SENSOR_LOCATION);
     uint8_t tempValue, fanspeed;
 
     // Start monitoring card temperature
@@ -303,6 +315,9 @@ int main(int argc, char const *argv[]) {
 
     if (READ_TEMP_COMMAND != NULL) {
         free(READ_TEMP_COMMAND);
+    }
+    if (TEMP_SENSOR_LOCATION != NULL) {
+        free(TEMP_SENSOR_LOCATION);
     }
     exit(0);
 }
