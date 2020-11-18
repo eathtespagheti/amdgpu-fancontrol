@@ -115,7 +115,6 @@ void signalHandler(int signal) {
     }
 
     restoreAutoFan();
-    kill(0, signal);
     exit(0);
 }
 
@@ -199,7 +198,7 @@ int8_t findHwmon(uint8_t cardID) {
 /**
  * Call signal on various interrupting signals
 */
-void signalManagement() {
+void childSignalsManagement() {
     signal(SIGABRT, signalHandler);
     signal(SIGSTOP, signalHandler);
     signal(SIGINT, signalHandler);
@@ -237,8 +236,6 @@ uint8_t readTemperature() {
 }
 
 int main(int argc, char const *argv[]) {
-    // Manage signals
-    signalManagement();
     // Read args
     parseArgs(argc, argv);
 
@@ -248,6 +245,9 @@ int main(int argc, char const *argv[]) {
     char cardPath[stringLenght + 1];
     // Write card path
     snprintf(cardPath, stringLenght, "%s/%s%d\n", DEVICES_PATH, CARD_PREFIX, cardID);
+
+    // Enable signals management for childs
+    childSignalsManagement();
 
     // Find hwmon
     int8_t hwmonID = findHwmon(cardID);
