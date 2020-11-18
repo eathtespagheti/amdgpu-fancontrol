@@ -46,7 +46,6 @@ int8_t ENABLED_CARD        = -1;
 int8_t CURRENT_HWMON       = -1;
 char *READ_TEMP_COMMAND    = NULL;
 bool VERBOSE               = true;
-int8_t WAIT_FOR_CHILD_TIME = 3;
 struct timespec WAIT_TIME  = {
     1, 0};
 
