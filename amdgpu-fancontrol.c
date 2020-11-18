@@ -110,7 +110,10 @@ void signalHandler(int signal) {
     if (signal == SIGCHLD) {
         return;
     }
-    printf("Received signal %d\n", signal);
+    if (VERBOSE) {
+        printf("Received signal %d\n", signal);
+    }
+
     restoreAutoFan();
     kill(0, signal);
     exit(0);
