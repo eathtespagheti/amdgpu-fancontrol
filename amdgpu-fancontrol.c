@@ -46,7 +46,7 @@ int8_t ENABLED_CARD        = -1;
 int8_t CURRENT_HWMON       = -1;
 char *READ_TEMP_COMMAND    = NULL;
 char *TEMP_SENSOR_LOCATION = NULL;
-bool VERBOSE               = true;
+bool VERBOSE               = false;
 struct timespec WAIT_TIME  = {
     1, 0};
 
@@ -85,6 +85,9 @@ void writeToPwmEnable(uint8_t cardID, uint8_t hwmonID, uint8_t value) {
 */
 void restoreAutoFan() {
     if (ENABLED_CARD != -1 && CURRENT_HWMON != -1) {
+        if (VERBOSE) {
+            puts("Resetting auto fan speed");
+        }
         writeToPwmEnable(ENABLED_CARD, CURRENT_HWMON, 2);
         ENABLED_CARD  = -1;
         CURRENT_HWMON = -1;
@@ -213,19 +216,74 @@ void childSignalsManagement() {
     signal(SIGQUIT, signalHandler);
 }
 
+/**
+ * Print help message
+ */
+void printHelp() {
+    puts("Usage: amdgpu-fancontrol --parameter value --other-parameter value\n");
+    puts("Parameters available:");
+    puts("");
+    puts("--control-frequency: set how often temperature value should be checked, value it's in Hz");
+    puts("");
+    puts("--help: print this message");
+    puts("");
+    puts("--max-fan-temperature: set temperature target for 100% fan speed");
+    puts("");
+    puts("--verbose: enable verbose mode");
+    puts("");
+    puts("--zero-rpm-delta: delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
+    puts("");
+    puts("--zero-rpm-temp: set the temperature limit for the zero rpm mod, if this temperature it's exceeded fan start spinning");
+    exit(0);
+}
+
+/**
+ * Parse commandline args
+ */
 void parseArgs(int argc, char const *argv[]) {
-    // Parse args
-    if (argc > 1) {
-        TEMP_VALUE_100 = atoi(argv[1]);
-        if (argc > 2) {
-            ZERO_RMP_ZONE = atoi(argv[2]);
+    bool toCheck[argc - 1];
+    for (size_t i = 0; i < argc - 1; i++) {
+        toCheck[i] = true;
+    }
+
+    for (size_t i = 1; i < argc; i++) {
+        if (toCheck[i - 1]) {
+            if (strcmp("--zero-rpm-temp", argv[i]) == 0) {
+                if (i + 1 < argc) {
+                    ZERO_RMP_ZONE = atoi(argv[i + 1]);
+                    toCheck[i]    = false;
+                }
+            } else if (strcmp("--zero-rpm-delta", argv[i]) == 0) {
+                if (i + 1 < argc) {
+                    ZERO_RMP_DELTA = atoi(argv[i + 1]);
+                    toCheck[i]     = false;
+                }
+            } else if (strcmp("--verbose", argv[i]) == 0) {
+                VERBOSE = true;
+            } else if (strcmp("--max-fan-temperature", argv[i]) == 0) {
+                if (i + 1 < argc) {
+                    TEMP_VALUE_100 = atoi(argv[i + 1]);
+                    toCheck[i]     = false;
+                }
+            } else if (strcmp("--control-frequency", argv[i]) == 0) {
+                if (i + 1 < argc) {
+                    CONTROL_FREQUENCY = atoi(argv[i + 1]);
+                    toCheck[i]        = false;
+                }
+            } else if (strcmp("--help", argv[i]) == 0) {
+                printHelp();
+            } else {
+                printf("Parameter not recognized \"%s\"\n", argv[i]);
+                printHelp();
+            }
         }
+        toCheck[i - 1] = false;
     }
     WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
     WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
 
     if (VERBOSE) {
-        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nWait time it's %d seconds and %d nanoseconds\n", TEMP_VALUE_100, ZERO_RMP_ZONE, WAIT_TIME.tv_sec, WAIT_TIME.tv_nsec);
+        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nControl frequency it's %dHz\n", TEMP_VALUE_100, ZERO_RMP_ZONE, CONTROL_FREQUENCY);
     }
 }
 
