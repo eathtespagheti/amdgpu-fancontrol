@@ -219,9 +219,6 @@ void parseArgs(int argc, char const *argv[]) {
         TEMP_VALUE_100 = atoi(argv[1]);
         if (argc > 2) {
             ZERO_RMP_ZONE = atoi(argv[2]);
-            if (argc > 3) {
-                CONTROL_FREQUENCY = atoi(argv[3]);
-            }
         }
     }
     WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
