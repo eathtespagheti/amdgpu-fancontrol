@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "Parameter.h"
 #include <inttypes.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <wait.h>
@@ -38,6 +37,8 @@ const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
+#define PARAMETERS_NUMBER 6
+Parameter PARAMETERS[PARAMETERS_NUMBER];
 uint8_t ZERO_RMP_ZONE      = 40;
 uint8_t ZERO_RMP_DELTA     = 4;
 uint8_t TEMP_VALUE_100     = 80;
@@ -49,6 +50,18 @@ char *TEMP_SENSOR_LOCATION = NULL;
 bool VERBOSE               = false;
 struct timespec WAIT_TIME  = {
     1, 0};
+
+/**
+ * Initialize parameters values
+ */
+void initParameters() {
+    PARAMETERS[0] = newParameter("control-frequency", "f", "1", "set how often temperature value should be checked, value it's in Hz");
+    PARAMETERS[1] = newParameter("help", "h", "", "print help message");
+    PARAMETERS[2] = newParameter("max-fan-temp", "m", "90", "set temperature target for 100% fan speed");
+    PARAMETERS[3] = newParameter("verbose", "v", "", "enable verbose mode");
+    PARAMETERS[4] = newParameter("zero-rpm-delta", "zd", "4", "delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
+    PARAMETERS[5] = newParameter("zero-rpm-temp", "zt", "25", "set the temperature limit for the zero rpm mode, if this temperature it's exceeded fan start spinning");
+}
 
 /**
  * Return fan speed value in percentage based on the card temperature
@@ -105,6 +118,9 @@ void quit() {
         free(TEMP_SENSOR_LOCATION);
     }
     restoreAutoFan();
+    for (size_t i = 0; i < PARAMETERS_NUMBER; i++) {
+        freeParameter(PARAMETERS[i]);
+    }
     exit(0);
 }
 
@@ -220,20 +236,26 @@ void childSignalsManagement() {
  * Print help message
  */
 void printHelp() {
-    puts("Usage: amdgpu-fancontrol --parameter value --other-parameter value\n");
+    printf("Usage: amdgpu-fancontrol %sparameter value %sp value\n\n", PARAMETER_PREFIX, SHORT_PARAMETER_PREFIX);
     puts("Parameters available:");
     puts("");
-    puts("--control-frequency: set how often temperature value should be checked, value it's in Hz");
-    puts("");
-    puts("--help: print this message");
-    puts("");
-    puts("--max-fan-temperature: set temperature target for 100% fan speed");
-    puts("");
-    puts("--verbose: enable verbose mode");
-    puts("");
-    puts("--zero-rpm-delta: delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
-    puts("");
-    puts("--zero-rpm-temp: set the temperature limit for the zero rpm mod, if this temperature it's exceeded fan start spinning");
+
+    Parameter p;
+    for (size_t i = 0; i < PARAMETERS_NUMBER; i++) {
+        ;
+        p = PARAMETERS[i];
+        printf("%s%s", PARAMETER_PREFIX, p->Name);
+        if (p->Shortname != NULL) {
+            printf(" %s%s", SHORT_PARAMETER_PREFIX, p->Shortname);
+        }
+        printf(":");
+        if (p->Value != NULL) {
+            printf("\tDEFAULT VALUE: %s", p->Value);
+        }
+        printf("\n%s\n", p->Description);
+        puts("");
+    }
+
     exit(0);
 }
 
@@ -313,6 +335,7 @@ uint8_t getNewTemperature(uint8_t lastTemperature) {
 }
 
 int main(int argc, char const *argv[]) {
+    initParameters();
     // Read args
     parseArgs(argc, argv);
 
