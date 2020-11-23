@@ -20,23 +20,48 @@
 #include "Parameter.h"
 
 /**
- * Create a new Parameter
+ * Setter for value
  */
-Parameter newParameter(char name[], char value[], char description[]) {
-    Parameter p = malloc(sizeof(*p));
-
-    p->Name = calloc(strlen(name), sizeof(*name));
+void setParameterValue(Parameter p, char value[]) {
+    if (p->Value != NULL) {
+        free(p->Value);
+    }
 
     if (!strcmp(value, "")) {
         p->Value = NULL;
     } else {
         p->Value = calloc(strlen(value), sizeof(*value));
     }
+}
+
+/**
+ * Setter for description
+ */
+void setParameterDescription(Parameter p, char description[]) {
+    if (p->Description != NULL) {
+        free(p->Description);
+    }
+
     if (!strcmp(description, "")) {
         p->Description = NULL;
     } else {
         p->Description = calloc(strlen(description), sizeof(*description));
     }
+}
+
+/**
+ * Create a new Parameter
+ */
+Parameter newParameter(char name[], char value[], char description[]) {
+    Parameter p = malloc(sizeof(*p));
+
+    p->Name        = calloc(strlen(name), sizeof(*name));
+    p->Value       = NULL;
+    p->Description = NULL;
+
+    setParameterValue(p, value);
+    setParameterDescription(p, description);
+
     return p;
 }
 

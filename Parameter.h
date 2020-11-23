@@ -35,5 +35,7 @@ typedef struct parameter_h {
 int getIntValue(Parameter p);
 void freeParameter(Parameter p);
 Parameter newParameter(char name[], char value[], char description[]);
+void setParameterDescription(Parameter p, char description[]);
+void setParameterValue(Parameter p, char value[]);
 
 #endif // ! PARAMETER_H
