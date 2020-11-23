@@ -23,10 +23,12 @@
 // * DNT
 #include <stdlib.h>
 #include <string.h>
-static const char PARAMETER_PREFIX[] = "--";
+static const char PARAMETER_PREFIX[]       = "--";
+static const char SHORT_PARAMETER_PREFIX[] = "-";
 
 typedef struct parameter_h {
     char *Name;
+    char *Shortname;
     char *Value;
     char *Description;
 } * Parameter;
@@ -35,8 +37,8 @@ typedef struct parameter_h {
 
 int getIntValue(Parameter p);
 void freeParameter(Parameter p);
-Parameter newParameter(char name[], char value[], char description[]);
-void setParameterDescription(Parameter p, char description[]);
+Parameter newParameter(char name[], char shortname[], char value[], char description[]);
+void setParameterShortname(Parameter p, char shortname[]);
 void setParameterValue(Parameter p, char value[]);
 
 #endif // ! PARAMETER_H

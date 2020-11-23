@@ -45,24 +45,26 @@ void setParameterValue(Parameter p, char value[]) {
 /**
  * Setter for description
  */
-void setParameterDescription(Parameter p, char description[]) {
-    setStringValue(&p->Description, description);
+void setParameterShortname(Parameter p, char shortname[]) {
+    setStringValue(&p->Shortname, shortname);
 }
 
 /**
  * Create a new Parameter
  */
-Parameter newParameter(char name[], char value[], char description[]) {
+Parameter newParameter(char name[], char shortname[], char value[], char description[]) {
     Parameter p = malloc(sizeof(*p));
 
-    p->Name        = calloc(strlen(name), sizeof(*name));
+    p->Name = calloc(strlen(name), sizeof(*name));
     strcpy(p->Name, name);
+    p->Description = calloc(strlen(description), sizeof(*description));
+    strcpy(p->Description, description);
 
     p->Value       = NULL;
-    p->Description = NULL;
+    p->Shortname   = NULL;
 
     setParameterValue(p, value);
-    setParameterDescription(p, description);
+    setParameterShortname(p, shortname);
 
     return p;
 }
@@ -74,6 +76,9 @@ void freeParameter(Parameter p) {
     if (p != NULL) {
         if (p->Name != NULL) {
             free(p->Name);
+        }
+        if (p->Shortname != NULL) {
+            free(p->Shortname);
         }
         if (p->Value != NULL) {
             free(p->Value);
