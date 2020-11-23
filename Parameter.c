@@ -17,33 +17,40 @@
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "parameter.h"
+#include "Parameter.h"
 
 /**
- * Create a new parameter
+ * Create a new Parameter
  */
-parameter newParameter(char name[], char value[]) {
-    parameter p;
-    p.name  = calloc(strlen(name), sizeof(*name));
-    p.value = calloc(strlen(value), sizeof(*value));
+Parameter newParameter(char name[], char value[], char description[]) {
+    Parameter p    = malloc(sizeof(*p));
+    p->Name        = calloc(strlen(name), sizeof(*name));
+    p->Value       = calloc(strlen(value), sizeof(*value));
+    p->Description = calloc(strlen(description), sizeof(*description));
     return p;
 }
 
 /**
- * Delete dinamically allocated fields in parameter
+ * Free parameter from memory
  */
-void freeParameter(parameter p) {
-    if (p.name != NULL) {
-        free(p.name);
+void freeParameter(Parameter p) {
+    if (p != NULL) {
+        if (p->Name != NULL) {
+            free(p->Name);
+        }
+        if (p->Value != NULL) {
+            free(p->Value);
+        }
+        if (p->Description != NULL) {
+            free(p->Description);
+        }
     }
-    if (p.value != NULL) {
-        free(p.value);
-    }
+    free(p);
 }
 
 /**
- * Convert to int and return parameter value
+ * Convert to int and return Parameter value
  */
-int getIntValue(parameter p) {
-    return atoi(p.value);
+int getIntValue(Parameter p) {
+    return atoi(p->Value);
 }

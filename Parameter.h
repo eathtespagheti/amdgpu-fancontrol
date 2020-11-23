@@ -25,10 +25,15 @@
 #include <string.h>
 
 typedef struct parameter_h {
-    char *name;
-    char *value;
-} parameter;
+    char *Name;
+    char *Value;
+    char *Description;
+} * Parameter;
 
 // * EDNT
+
+int getIntValue(Parameter p);
+void freeParameter(Parameter p);
+Parameter newParameter(char name[], char value[], char description[]);
 
 #endif // ! PARAMETER_H
