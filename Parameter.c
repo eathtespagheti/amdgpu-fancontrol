@@ -30,7 +30,7 @@ static void setStringValue(char **string, char value[]) {
     if (!strcmp(value, "")) {
         *string = NULL;
     } else {
-        *string = calloc(strlen(value), sizeof(*value));
+        *string = calloc(strlen(value) + 1, sizeof(*value));
         strcpy(*string, value);
     }
 }
@@ -55,13 +55,13 @@ void setParameterShortname(Parameter p, char shortname[]) {
 Parameter newParameter(char name[], char shortname[], char value[], char description[]) {
     Parameter p = malloc(sizeof(*p));
 
-    p->Name = calloc(strlen(name), sizeof(*name));
+    p->Name = calloc(strlen(name) + 1, sizeof(*name));
     strcpy(p->Name, name);
-    p->Description = calloc(strlen(description), sizeof(*description));
+    p->Description = calloc(strlen(description) + 1, sizeof(*description));
     strcpy(p->Description, description);
 
-    p->Value       = NULL;
-    p->Shortname   = NULL;
+    p->Value     = NULL;
+    p->Shortname = NULL;
 
     setParameterValue(p, value);
     setParameterShortname(p, shortname);
