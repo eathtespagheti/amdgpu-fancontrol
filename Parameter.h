@@ -23,6 +23,7 @@
 // * DNT
 #include <stdlib.h>
 #include <string.h>
+static const char PARAMETER_PREFIX[] = "--";
 
 typedef struct parameter_h {
     char *Name;

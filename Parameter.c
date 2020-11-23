@@ -20,33 +20,33 @@
 #include "Parameter.h"
 
 /**
- * Setter for value
+ * Set value for a certain string
  */
-void setParameterValue(Parameter p, char value[]) {
-    if (p->Value != NULL) {
-        free(p->Value);
+static void setStringValue(char **string, char value[]) {
+    if (*string != NULL) {
+        free(*string);
     }
 
     if (!strcmp(value, "")) {
-        p->Value = NULL;
+        *string = NULL;
     } else {
-        p->Value = calloc(strlen(value), sizeof(*value));
+        *string = calloc(strlen(value), sizeof(*value));
+        strcpy(*string, value);
     }
+}
+
+/**
+ * Setter for value
+ */
+void setParameterValue(Parameter p, char value[]) {
+    setStringValue(&p->Value, value);
 }
 
 /**
  * Setter for description
  */
 void setParameterDescription(Parameter p, char description[]) {
-    if (p->Description != NULL) {
-        free(p->Description);
-    }
-
-    if (!strcmp(description, "")) {
-        p->Description = NULL;
-    } else {
-        p->Description = calloc(strlen(description), sizeof(*description));
-    }
+    setStringValue(&p->Description, description);
 }
 
 /**
@@ -56,6 +56,8 @@ Parameter newParameter(char name[], char value[], char description[]) {
     Parameter p = malloc(sizeof(*p));
 
     p->Name        = calloc(strlen(name), sizeof(*name));
+    strcpy(p->Name, name);
+
     p->Value       = NULL;
     p->Description = NULL;
 
