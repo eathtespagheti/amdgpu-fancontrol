@@ -15,11 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
 
-build_folder = "builds"
-compiler = "tcc"
+build_folder = builds
+compiler = tcc
+binary_name = amdgpu-fancontrol
 
-$(build_folder)/amdgpu-fancontrol: $(build_folder)/Parameter.o
-	$(compiler) $(build_folder)/Parameter.o amdgpu-fancontrol.c -o $(build_folder)/amdgpu-fancontrol
+$(build_folder)/$(binary_name): $(build_folder)/Parameter.o
+	$(compiler) $(build_folder)/Parameter.o $(binary_name).c -o $(build_folder)/$(binary_name)
 
 $(build_folder)/Parameter.o:
 	$(compiler) -c Parameter.c -o $(build_folder)/Parameter.o
+
+clean:
+	rm $(build_folder)/*
