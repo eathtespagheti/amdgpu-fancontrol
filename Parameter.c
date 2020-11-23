@@ -23,10 +23,20 @@
  * Create a new Parameter
  */
 Parameter newParameter(char name[], char value[], char description[]) {
-    Parameter p    = malloc(sizeof(*p));
-    p->Name        = calloc(strlen(name), sizeof(*name));
-    p->Value       = calloc(strlen(value), sizeof(*value));
-    p->Description = calloc(strlen(description), sizeof(*description));
+    Parameter p = malloc(sizeof(*p));
+
+    p->Name = calloc(strlen(name), sizeof(*name));
+
+    if (!strcmp(value, "")) {
+        p->Value = NULL;
+    } else {
+        p->Value = calloc(strlen(value), sizeof(*value));
+    }
+    if (!strcmp(description, "")) {
+        p->Description = NULL;
+    } else {
+        p->Description = calloc(strlen(description), sizeof(*description));
+    }
     return p;
 }
 
@@ -52,5 +62,5 @@ void freeParameter(Parameter p) {
  * Convert to int and return Parameter value
  */
 int getIntValue(Parameter p) {
-    return atoi(p->Value);
+    return p->Description == NULL ? 0 : atoi(p->Value);
 }
