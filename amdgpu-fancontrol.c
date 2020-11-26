@@ -305,7 +305,7 @@ void parseArgs(int argc, char const *argv[]) {
     WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
 
     if (VERBOSE) {
-        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nControl frequency it's %dHz\n", TEMP_VALUE_100, ZERO_RMP_ZONE, CONTROL_FREQUENCY);
+        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nControl frequency it's %.2fHz\n", TEMP_VALUE_100, ZERO_RMP_ZONE, CONTROL_FREQUENCY);
     }
 }
 
