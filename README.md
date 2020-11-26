@@ -20,3 +20,7 @@
 # amdgpu-fancontrol
 
 `amdgpu-fancontrol` it's an open source fan controller service written in C for AMD GPUs using `amdgpu` driver
+
+## How to build
+
+run `make` in project folder, you can then find compiler binary in `builds/amdgpu-fancontrol`
