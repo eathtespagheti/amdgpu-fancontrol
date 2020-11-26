@@ -39,10 +39,16 @@ const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 // Variables
 #define PARAMETERS_NUMBER 6
 Parameter PARAMETERS[PARAMETERS_NUMBER];
-uint8_t ZERO_RMP_ZONE      = 40;
-uint8_t ZERO_RMP_DELTA     = 4;
-uint8_t TEMP_VALUE_100     = 80;
-double CONTROL_FREQUENCY   = 1;
+enum PARAMETERS_NAMES {
+    controlFrequency,
+    help,
+    maxFanTemp,
+    verbose,
+    zeroRpmDelta,
+    zeroRpmTemp
+};
+uint8_t ZERO_RMP_ZONE, MAX_FAN_TEMP, ZERO_RMP_DELTA;
+double CONTROL_FREQUENCY;
 int8_t ENABLED_CARD        = -1;
 int8_t CURRENT_HWMON       = -1;
 char *READ_TEMP_COMMAND    = NULL;
@@ -55,12 +61,102 @@ struct timespec WAIT_TIME  = {
  * Initialize parameters values
  */
 void initParameters() {
-    PARAMETERS[0] = newParameter("control-frequency", "f", "1", "Set how many times per second temperature value should be checked");
-    PARAMETERS[1] = newParameter("help", "h", "", "Print help message");
-    PARAMETERS[2] = newParameter("max-fan-temp", "m", "90", "Set temperature target for 100% fan speed");
-    PARAMETERS[3] = newParameter("verbose", "v", "", "Enable verbose mode");
-    PARAMETERS[4] = newParameter("zero-rpm-delta", "zd", "3", "Delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
-    PARAMETERS[5] = newParameter("zero-rpm-temp", "zt", "33", "Set the temperature limit for the zero rpm mode, if this temperature it's exceeded fan start spinning");
+
+    PARAMETERS[controlFrequency] = newParameter("control-frequency", "f", "1", "Set how many times per second temperature value should be checked");
+    PARAMETERS[help]             = newParameter("help", "h", "", "Print help message");
+    PARAMETERS[maxFanTemp]       = newParameter("max-fan-temp", "m", "90", "Set temperature target for 100% fan speed");
+    PARAMETERS[verbose]          = newParameter("verbose", "v", "", "Enable verbose mode");
+    PARAMETERS[zeroRpmDelta]     = newParameter("zero-rpm-delta", "zd", "3", "Delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
+    PARAMETERS[zeroRpmTemp]      = newParameter("zero-rpm-temp", "zt", "33", "Set the temperature limit for the zero rpm mode, if this temperature it's exceeded fan start spinning");
+}
+
+/**
+ * Take parameters values from parameters array and set global variables
+ */
+void calculateParametersValues() {
+    CONTROL_FREQUENCY = getParameterFloatValue(PARAMETERS[controlFrequency]);
+    MAX_FAN_TEMP      = getParameterIntValue(PARAMETERS[maxFanTemp]);
+    VERBOSE           = getParameterBoolValue(PARAMETERS[verbose]);
+    ZERO_RMP_DELTA    = getParameterIntValue(PARAMETERS[zeroRpmDelta]);
+    ZERO_RMP_ZONE     = getParameterIntValue(PARAMETERS[zeroRpmTemp]);
+
+    WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
+    WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
+
+    if (VERBOSE) {
+        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nZero RPM delta: %dC°\nControl frequency it's %.2fHz\n", MAX_FAN_TEMP, ZERO_RMP_ZONE, ZERO_RMP_DELTA, CONTROL_FREQUENCY);
+    }
+}
+
+/**
+ * Print help message
+ */
+void printHelp() {
+    printf("Usage: amdgpu-fancontrol %sparameter value %sp value\n\n", PARAMETER_PREFIX, SHORT_PARAMETER_PREFIX);
+    puts("Parameters available:");
+    puts("");
+
+    Parameter p;
+    for (size_t i = 0; i < PARAMETERS_NUMBER; i++) {
+        ;
+        p = PARAMETERS[i];
+        printf("%s%s", PARAMETER_PREFIX, p->Name);
+        if (p->Shortname != NULL) {
+            printf(" %s%s", SHORT_PARAMETER_PREFIX, p->Shortname);
+        }
+        printf(":");
+        if (p->Value != NULL) {
+            printf("\tDEFAULT VALUE: %s", p->Value);
+        }
+        printf("\n%s\n", p->Description);
+        puts("");
+    }
+
+    exit(0);
+}
+
+/**
+ * Parse commandline args
+ */
+void parseArgs(int argc, char const *argv[]) {
+    bool toCheck[argc - 1];
+    for (size_t i = 0; i < argc - 1; i++) {
+        toCheck[i] = true;
+    }
+    for (size_t i = 1; i < argc; i++) {
+        if (toCheck[i - 1]) {
+            if (compareParameter(PARAMETERS[controlFrequency], argv[i])) {
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[controlFrequency], argv[i + 1]);
+                }
+            } else if (compareParameter(PARAMETERS[help], argv[i])) {
+                printHelp();
+            } else if (compareParameter(PARAMETERS[maxFanTemp], argv[i])) {
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[maxFanTemp], argv[i + 1]);
+                }
+            } else if (compareParameter(PARAMETERS[verbose], argv[i])) {
+                setParameterValue(PARAMETERS[verbose], "1");
+            } else if (compareParameter(PARAMETERS[zeroRpmDelta], argv[i])) {
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[zeroRpmDelta], argv[i + 1]);
+                }
+            } else if (compareParameter(PARAMETERS[zeroRpmTemp], argv[i])) {
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[zeroRpmTemp], argv[i + 1]);
+                }
+            } else {
+                printf("Parameter not recognized \"%s\"\n", argv[i]);
+                printHelp();
+            }
+        }
+        toCheck[i - 1] = false;
+    }
+    calculateParametersValues();
 }
 
 /**
@@ -70,7 +166,7 @@ uint8_t fanSpeedValue(uint8_t temp) {
     if (temp <= ZERO_RMP_ZONE) {
         return 0;
     }
-    uint8_t fanSpeed = (100.0 / (TEMP_VALUE_100)) * temp;
+    uint8_t fanSpeed = (100.0 / (MAX_FAN_TEMP)) * temp;
     return fanSpeed > 100 ? 100 : fanSpeed;
 }
 
@@ -230,97 +326,6 @@ int8_t findHwmon(uint8_t cardID) {
 void childSignalsManagement() {
     signal(SIGINT, signalHandler);
     signal(SIGQUIT, signalHandler);
-}
-
-/**
- * Print help message
- */
-void printHelp() {
-    printf("Usage: amdgpu-fancontrol %sparameter value %sp value\n\n", PARAMETER_PREFIX, SHORT_PARAMETER_PREFIX);
-    puts("Parameters available:");
-    puts("");
-
-    Parameter p;
-    for (size_t i = 0; i < PARAMETERS_NUMBER; i++) {
-        ;
-        p = PARAMETERS[i];
-        printf("%s%s", PARAMETER_PREFIX, p->Name);
-        if (p->Shortname != NULL) {
-            printf(" %s%s", SHORT_PARAMETER_PREFIX, p->Shortname);
-        }
-        printf(":");
-        if (p->Value != NULL) {
-            printf("\tDEFAULT VALUE: %s", p->Value);
-        }
-        printf("\n%s\n", p->Description);
-        puts("");
-    }
-
-    exit(0);
-}
-
-/**
- * Take parameters values from parameters array and set global variables
- */
-void calculateParametersValues() {
-    CONTROL_FREQUENCY = getParameterFloatValue(PARAMETERS[0]);
-    TEMP_VALUE_100    = getParameterIntValue(PARAMETERS[2]);
-    VERBOSE           = getParameterBoolValue(PARAMETERS[3]);
-    ZERO_RMP_DELTA    = getParameterIntValue(PARAMETERS[4]);
-    ZERO_RMP_ZONE     = getParameterIntValue(PARAMETERS[5]);
-
-    WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
-    WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
-
-    if (VERBOSE) {
-        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nZero RPM delta: %dC°\nControl frequency it's %.2fHz\n", TEMP_VALUE_100, ZERO_RMP_ZONE, ZERO_RMP_DELTA, CONTROL_FREQUENCY);
-    }
-}
-
-/**
- * Parse commandline args
- */
-void parseArgs(int argc, char const *argv[]) {
-    bool toCheck[argc - 1];
-    for (size_t i = 0; i < argc - 1; i++) {
-        toCheck[i] = true;
-    }
-
-    for (size_t i = 1; i < argc; i++) {
-        if (toCheck[i - 1]) {
-            if (compareParameter(PARAMETERS[0], argv[i])) { // Control frequency
-                if (i + 1 < argc) {
-                    toCheck[i] = false;
-                    setParameterValue(PARAMETERS[0], argv[i + 1]);
-                }
-            } else if (compareParameter(PARAMETERS[1], argv[i])) { // Help
-                printHelp();
-            } else if (compareParameter(PARAMETERS[2], argv[i])) { // Max fan temperature
-                if (i + 1 < argc) {
-                    toCheck[i] = false;
-                    setParameterValue(PARAMETERS[2], argv[i + 1]);
-                }
-            } else if (compareParameter(PARAMETERS[3], argv[i])) { // Verbose
-                setParameterValue(PARAMETERS[3], "1");
-            } else if (compareParameter(PARAMETERS[4], argv[i])) { // Zero RPM delta
-                if (i + 1 < argc) {
-                    toCheck[i] = false;
-                    setParameterValue(PARAMETERS[4], argv[i + 1]);
-                }
-            } else if (compareParameter(PARAMETERS[5], argv[i])) { // Zero RPM temp
-                if (i + 1 < argc) {
-                    toCheck[i] = false;
-                    setParameterValue(PARAMETERS[5], argv[i + 1]);
-                }
-            } else {
-                printf("Parameter not recognized \"%s\"\n", argv[i]);
-                printHelp();
-            }
-        }
-        toCheck[i - 1] = false;
-    }
-
-    calculateParametersValues();
 }
 
 /**
