@@ -21,6 +21,7 @@
 #define PARAMETER_H
 
 // * DNT
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 static const char PARAMETER_PREFIX[]       = "--";
@@ -35,10 +36,13 @@ typedef struct parameter_h {
 
 // * EDNT
 
-int getIntValue(Parameter p);
+bool compareParameter(Parameter p, const char *arg);
+bool getParameterBoolValue(Parameter p);
+double getParameterFloatValue(Parameter p);
+int getParameterIntValue(Parameter p);
 void freeParameter(Parameter p);
 Parameter newParameter(char name[], char shortname[], char value[], char description[]);
 void setParameterShortname(Parameter p, char shortname[]);
-void setParameterValue(Parameter p, char value[]);
+void setParameterValue(Parameter p, const char value[]);
 
 #endif // ! PARAMETER_H

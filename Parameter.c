@@ -18,11 +18,13 @@
  */
 
 #include "Parameter.h"
+static int __PARAMETER_H__PARAMETER_PREFIX_LENGHT       = -1;
+static int __PARAMETER_H__SHORT_PARAMETER_PREFIX_LENGHT = -1;
 
 /**
  * Set value for a certain string
  */
-static void setStringValue(char **string, char value[]) {
+static void setStringValue(char **string, const char value[]) {
     if (*string != NULL) {
         free(*string);
     }
@@ -38,7 +40,7 @@ static void setStringValue(char **string, char value[]) {
 /**
  * Setter for value
  */
-void setParameterValue(Parameter p, char value[]) {
+void setParameterValue(Parameter p, const char value[]) {
     setStringValue(&p->Value, value);
 }
 
@@ -93,6 +95,53 @@ void freeParameter(Parameter p) {
 /**
  * Convert to int and return Parameter value
  */
-int getIntValue(Parameter p) {
-    return p->Description == NULL ? 0 : atoi(p->Value);
+int getParameterIntValue(Parameter p) {
+    return p->Value == NULL ? 0 : atoi(p->Value);
+}
+
+/**
+ * Convert to double and return Parameter value
+ */
+double getParameterFloatValue(Parameter p) {
+    return p->Value == NULL ? 0 : atof(p->Value);
+}
+
+/**
+ * Convert to bool and return Parameter value
+ */
+bool getParameterBoolValue(Parameter p) {
+    if (p->Value == NULL) {
+        return false;
+    }
+
+    if (strcmp(p->Value, "1") == 0) {
+        return true;
+    }
+
+    if (strcmp(p->Value, "true") == 0) {
+        return true;
+    }
+
+    return false;
+}
+
+// Return true if arg string matcher parameter name or shortname
+bool compareParameter(Parameter p, const char *arg) {
+    // Compare shortparameter name
+    if (__PARAMETER_H__SHORT_PARAMETER_PREFIX_LENGHT == -1) {
+        __PARAMETER_H__SHORT_PARAMETER_PREFIX_LENGHT = strlen(SHORT_PARAMETER_PREFIX);
+    }
+    if (strcmp(p->Shortname, &(arg[__PARAMETER_H__SHORT_PARAMETER_PREFIX_LENGHT])) == 0) {
+        return true;
+    }
+
+    // Compare full parameter name
+    if (__PARAMETER_H__PARAMETER_PREFIX_LENGHT == -1) {
+        __PARAMETER_H__PARAMETER_PREFIX_LENGHT = strlen(PARAMETER_PREFIX);
+    }
+    if (strcmp(p->Name, &(arg[__PARAMETER_H__PARAMETER_PREFIX_LENGHT])) == 0) {
+        return true;
+    }
+
+    return false;
 }

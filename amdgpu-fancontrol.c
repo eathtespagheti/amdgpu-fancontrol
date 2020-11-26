@@ -260,6 +260,24 @@ void printHelp() {
 }
 
 /**
+ * Take parameters values from parameters array and set global variables
+ */
+void calculateParametersValues() {
+    CONTROL_FREQUENCY = getParameterFloatValue(PARAMETERS[0]);
+    TEMP_VALUE_100    = getParameterIntValue(PARAMETERS[2]);
+    VERBOSE           = getParameterBoolValue(PARAMETERS[3]);
+    ZERO_RMP_DELTA    = getParameterIntValue(PARAMETERS[4]);
+    ZERO_RMP_ZONE     = getParameterIntValue(PARAMETERS[5]);
+
+    WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
+    WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
+
+    if (VERBOSE) {
+        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nControl frequency it's %.2fHz\n", TEMP_VALUE_100, ZERO_RMP_ZONE, CONTROL_FREQUENCY);
+    }
+}
+
+/**
  * Parse commandline args
  */
 void parseArgs(int argc, char const *argv[]) {
@@ -270,30 +288,30 @@ void parseArgs(int argc, char const *argv[]) {
 
     for (size_t i = 1; i < argc; i++) {
         if (toCheck[i - 1]) {
-            if (strcmp("--zero-rpm-temp", argv[i]) == 0) {
+            if (compareParameter(PARAMETERS[0], argv[i])) { // Control frequency
                 if (i + 1 < argc) {
-                    ZERO_RMP_ZONE = atoi(argv[i + 1]);
-                    toCheck[i]    = false;
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[0], argv[i + 1]);
                 }
-            } else if (strcmp("--zero-rpm-delta", argv[i]) == 0) {
-                if (i + 1 < argc) {
-                    ZERO_RMP_DELTA = atoi(argv[i + 1]);
-                    toCheck[i]     = false;
-                }
-            } else if (strcmp("--verbose", argv[i]) == 0) {
-                VERBOSE = true;
-            } else if (strcmp("--max-fan-temperature", argv[i]) == 0) {
-                if (i + 1 < argc) {
-                    TEMP_VALUE_100 = atoi(argv[i + 1]);
-                    toCheck[i]     = false;
-                }
-            } else if (strcmp("--control-frequency", argv[i]) == 0) {
-                if (i + 1 < argc) {
-                    CONTROL_FREQUENCY = atof(argv[i + 1]);
-                    toCheck[i]        = false;
-                }
-            } else if (strcmp("--help", argv[i]) == 0) {
+            } else if (compareParameter(PARAMETERS[1], argv[i])) { // Help
                 printHelp();
+            } else if (compareParameter(PARAMETERS[2], argv[i])) { // Max fan temperature
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[2], argv[i + 1]);
+                }
+            } else if (compareParameter(PARAMETERS[3], argv[i])) { // Verbose
+                setParameterValue(PARAMETERS[3], "1");
+            } else if (compareParameter(PARAMETERS[4], argv[i])) { // Zero RPM delta
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[4], argv[i + 1]);
+                }
+            } else if (compareParameter(PARAMETERS[5], argv[i])) { // Zero RPM temp
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[5], argv[i + 1]);
+                }
             } else {
                 printf("Parameter not recognized \"%s\"\n", argv[i]);
                 printHelp();
@@ -301,12 +319,8 @@ void parseArgs(int argc, char const *argv[]) {
         }
         toCheck[i - 1] = false;
     }
-    WAIT_TIME.tv_sec  = 1 / CONTROL_FREQUENCY;
-    WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
 
-    if (VERBOSE) {
-        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nControl frequency it's %.2fHz\n", TEMP_VALUE_100, ZERO_RMP_ZONE, CONTROL_FREQUENCY);
-    }
+    calculateParametersValues();
 }
 
 /**
