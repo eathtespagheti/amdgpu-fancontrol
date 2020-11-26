@@ -23,4 +23,4 @@
 
 ## How to build
 
-run `make` in project folder, you can then find compiler binary in `builds/amdgpu-fancontrol`
+run `make` in project folder, you can then find compiled binary in `builds/amdgpu-fancontrol`
