@@ -277,10 +277,20 @@ int8_t findCardID() {
     }
     // Close process output
     pclose(cmd);
+    if (VERBOSE) {
+        printf("%d card(s) found\n", numberOfCards);
+    }
+    if (numberOfCards == 0) {
+        if (VERBOSE) {
+            fprintf(stderr, "No cards found!\n");
+        }
+        exit(1);
+    }
 
     strcpy(commandPreset, "cat /sys/class/drm/%s%d/device/vendor");
     char cardVendor[strlen(CARD_PREFIX) + 2 + 1];
     maxCommandLenght = strlen(commandPreset) - 4 + strlen(CARD_PREFIX) + 2 + 1;
+
     // For every card
     for (size_t i = 0; i < numberOfCards; i++) {
         if (!fork()) { // Create a child for every card
@@ -291,7 +301,10 @@ int8_t findCardID() {
             pclose(cmd);
             // Check if it's not AMD
             if (strcmp(cardVendor, AMD_VENDOR) != 0) {
-                exit(0);
+                if (VERBOSE) {
+                    fprintf(stderr, "[%s%d] Not an AMD card!\n", CARD_PREFIX, i);
+                }
+                exit(2);
             }
             return IDs[i]; // Return valid AMD card ID
         } else {
@@ -314,7 +327,10 @@ int8_t findHwmon(uint8_t cardID) {
     FILE *cmd = popen(command, "r");
     char hwmonID[2];
     if (fgets(hwmonID, sizeof(hwmonID), cmd) == NULL) {
-        return -1; // In case of missing hwmon
+        if (VERBOSE) {
+            fprintf(stderr, "[%s%d] No hwmon available!\n", CARD_PREFIX, cardID);
+        }
+        exit(3);
     }
     pclose(cmd);
     return atoi(hwmonID);
@@ -351,6 +367,13 @@ uint8_t getNewTemperature(uint8_t lastTemperature) {
         temp = getTempValue();
     }
     return temp;
+}
+
+/**
+ * Print [card#]
+ */
+void logCardName() {
+    printf("[%s%d] ", CARD_PREFIX, ENABLED_CARD);
 }
 
 int main(int argc, char const *argv[]) {
@@ -391,25 +414,33 @@ int main(int argc, char const *argv[]) {
     tempValue = getTempValue();
     fanspeed  = fanSpeedValue(tempValue);
     setFanSpeed(fanspeed);
+    // Log values
+    if (VERBOSE) {
+        logCardName();
+        printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
+    }
     while (true) {
         tempValue = getNewTemperature(tempValue);
         fanspeed  = fanSpeedValue(tempValue);
         setFanSpeed(fanspeed);
         // Log values
         if (VERBOSE) {
+            logCardName();
             printf("Temperature it's: %dC° - Fan speed it's %d%\n", tempValue, fanspeed);
         }
 
         // Zero RPM management
         if (tempValue > ZERO_RMP_ZONE && tempValue < ZERO_RMP_ZONE + ZERO_RMP_DELTA) { // In case of ramping up from ZERO_RMP_MODE
             if (VERBOSE) {
+                logCardName();
                 printf("Exit from Zero RPM Mode\n");
             }
             uint8_t targetTemp      = ZERO_RMP_ZONE - ZERO_RMP_DELTA;
             uint8_t tempTemperature = getNewTemperature(tempTemperature);
             while (tempTemperature <= tempValue && tempTemperature > targetTemp) {
                 if (VERBOSE) {
-                    printf("Temperature it's: %dC° - Waiting for temps to reach %d\n", tempTemperature, targetTemp);
+                    logCardName();
+                    printf("Temperature it's: %dC° - Waiting for temps to reach %dC°\n", tempTemperature, targetTemp);
                 }
                 tempTemperature = getNewTemperature(tempTemperature);
             }
