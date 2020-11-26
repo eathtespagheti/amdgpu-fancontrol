@@ -299,7 +299,6 @@ int8_t findCardID() {
             cmd = popen(command, "r");
             fgets(cardVendor, sizeof(cardVendor), cmd);
             pclose(cmd);
-            // Check if it's not AMD
             if (strcmp(cardVendor, AMD_VENDOR) != 0) {
                 if (VERBOSE) {
                     fprintf(stderr, "[%s%d] Not an AMD card!\n", CARD_PREFIX, i);
@@ -307,12 +306,13 @@ int8_t findCardID() {
                 exit(2);
             }
             return IDs[i]; // Return valid AMD card ID
-        } else {
-            signal(SIGCHLD, signalHandler);
-            while (true) {
-                pause();
-            }
         }
+    }
+
+    // Only Parent
+    signal(SIGCHLD, signalHandler);
+    while (true) {
+        pause();
     }
     exit(0);
 }
