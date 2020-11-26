@@ -22,8 +22,11 @@ binary_name = amdgpu-fancontrol
 $(build_folder)/$(binary_name): $(build_folder)/Parameter.o
 	$(compiler) $(build_folder)/Parameter.o $(binary_name).c -o $(build_folder)/$(binary_name)
 
-$(build_folder)/Parameter.o:
+$(build_folder)/Parameter.o: $(build_folder)
 	$(compiler) -c Parameter.c -o $(build_folder)/Parameter.o
 
+$(build_folder):
+	mkdir -p $(build_folder)
+
 clean:
-	rm $(build_folder)/*
+	rm -rf $(build_folder)
