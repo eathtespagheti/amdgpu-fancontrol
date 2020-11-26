@@ -55,12 +55,12 @@ struct timespec WAIT_TIME  = {
  * Initialize parameters values
  */
 void initParameters() {
-    PARAMETERS[0] = newParameter("control-frequency", "f", "1", "set how often temperature value should be checked, value it's in Hz");
-    PARAMETERS[1] = newParameter("help", "h", "", "print help message");
-    PARAMETERS[2] = newParameter("max-fan-temp", "m", "90", "set temperature target for 100% fan speed");
-    PARAMETERS[3] = newParameter("verbose", "v", "", "enable verbose mode");
-    PARAMETERS[4] = newParameter("zero-rpm-delta", "zd", "4", "delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
-    PARAMETERS[5] = newParameter("zero-rpm-temp", "zt", "25", "set the temperature limit for the zero rpm mode, if this temperature it's exceeded fan start spinning");
+    PARAMETERS[0] = newParameter("control-frequency", "f", "1", "Set how many times per second temperature value should be checked");
+    PARAMETERS[1] = newParameter("help", "h", "", "Print help message");
+    PARAMETERS[2] = newParameter("max-fan-temp", "m", "90", "Set temperature target for 100% fan speed");
+    PARAMETERS[3] = newParameter("verbose", "v", "", "Enable verbose mode");
+    PARAMETERS[4] = newParameter("zero-rpm-delta", "zd", "4", "Delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
+    PARAMETERS[5] = newParameter("zero-rpm-temp", "zt", "25", "Set the temperature limit for the zero rpm mode, if this temperature it's exceeded fan start spinning");
 }
 
 /**
