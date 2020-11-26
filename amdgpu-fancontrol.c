@@ -42,7 +42,7 @@ Parameter PARAMETERS[PARAMETERS_NUMBER];
 uint8_t ZERO_RMP_ZONE      = 40;
 uint8_t ZERO_RMP_DELTA     = 4;
 uint8_t TEMP_VALUE_100     = 80;
-uint8_t CONTROL_FREQUENCY  = 1;
+double CONTROL_FREQUENCY   = 1;
 int8_t ENABLED_CARD        = -1;
 int8_t CURRENT_HWMON       = -1;
 char *READ_TEMP_COMMAND    = NULL;
@@ -289,7 +289,7 @@ void parseArgs(int argc, char const *argv[]) {
                 }
             } else if (strcmp("--control-frequency", argv[i]) == 0) {
                 if (i + 1 < argc) {
-                    CONTROL_FREQUENCY = atoi(argv[i + 1]);
+                    CONTROL_FREQUENCY = atof(argv[i + 1]);
                     toCheck[i]        = false;
                 }
             } else if (strcmp("--help", argv[i]) == 0) {
