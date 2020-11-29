@@ -61,7 +61,6 @@ struct timespec WAIT_TIME  = {
  * Initialize parameters values
  */
 void initParameters() {
-
     PARAMETERS[controlFrequency] = newParameter("control-frequency", "f", "1", "Set how many times per second temperature value should be checked");
     PARAMETERS[help]             = newParameter("help", "h", "", "Print help message");
     PARAMETERS[maxFanTemp]       = newParameter("max-fan-temp", "m", "90", "Set temperature target for 100% fan speed");
