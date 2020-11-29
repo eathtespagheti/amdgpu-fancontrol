@@ -37,7 +37,7 @@ const char PWM[]              = "pwm1";
 const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
-#define PARAMETERS_NUMBER 6
+#define PARAMETERS_NUMBER 7
 #define TEMPERATURE_STEPS 100
 Parameter PARAMETERS[PARAMETERS_NUMBER];
 uint8_t TEMPERATURE_SPEED_MAP[TEMPERATURE_STEPS];
@@ -412,7 +412,8 @@ uint8_t getTempValue() {
  * Wait for temperature to change and return it's value
  */
 uint8_t getNewTemperature(uint8_t lastTemperature) {
-    uint8_t temp = getTempValue();
+    uint8_t temp = 0;
+    temp = getTempValue();
     while (temp == lastTemperature) {
         nanosleep(&WAIT_TIME, &WAIT_TIME);
         temp = getTempValue();
