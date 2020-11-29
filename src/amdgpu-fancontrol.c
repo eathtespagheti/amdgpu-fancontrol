@@ -38,18 +38,19 @@ const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
 #define PARAMETERS_NUMBER 6
-#define TEMPERATURE_STEPS 101
+#define TEMPERATURE_STEPS 100
 Parameter PARAMETERS[PARAMETERS_NUMBER];
 uint8_t TEMPERATURE_SPEED_MAP[TEMPERATURE_STEPS];
 enum PARAMETERS_NAMES {
     controlFrequency,
     help,
     maxFanTemp,
+    stepsDelta,
     verbose,
     zeroRpmDelta,
     zeroRpmTemp
 };
-uint8_t ZERO_RMP_ZONE, MAX_FAN_TEMP, ZERO_RMP_DELTA;
+uint8_t ZERO_RMP_ZONE, MAX_FAN_TEMP, STEPS_DELTA, ZERO_RMP_DELTA;
 double CONTROL_FREQUENCY;
 int8_t ENABLED_CARD        = -1;
 int8_t CURRENT_HWMON       = -1;
@@ -66,6 +67,7 @@ void initParameters() {
     PARAMETERS[controlFrequency] = newParameter("control-frequency", "f", "1", "Set how many times per second temperature value should be checked");
     PARAMETERS[help]             = newParameter("help", "h", "", "Print help message");
     PARAMETERS[maxFanTemp]       = newParameter("max-fan-temp", "m", "90", "Set temperature target for 100% fan speed");
+    PARAMETERS[stepsDelta]       = newParameter("steps-delta", "s", "3", "Amount of minium temperature delta between different fan speed steps");
     PARAMETERS[verbose]          = newParameter("verbose", "v", "", "Enable verbose mode");
     PARAMETERS[zeroRpmDelta]     = newParameter("zero-rpm-delta", "zd", "3", "Delta value for the zero-rpm-temp, if temperature exceed zero-rpm-temp but it's lower than zero-rpm-temp + zero-rpm-delta, fans keep spinning at constant speed until temperature reaches zero-rpm-temp - zero-rpm-delta");
     PARAMETERS[zeroRpmTemp]      = newParameter("zero-rpm-temp", "zt", "33", "Set the temperature limit for the zero rpm mode, if this temperature it's exceeded fan start spinning");
@@ -77,6 +79,7 @@ void initParameters() {
 void calculateParametersValues() {
     CONTROL_FREQUENCY = getParameterFloatValue(PARAMETERS[controlFrequency]);
     MAX_FAN_TEMP      = getParameterIntValue(PARAMETERS[maxFanTemp]);
+    STEPS_DELTA       = getParameterIntValue(PARAMETERS[stepsDelta]);
     VERBOSE           = getParameterBoolValue(PARAMETERS[verbose]);
     ZERO_RMP_DELTA    = getParameterIntValue(PARAMETERS[zeroRpmDelta]);
     ZERO_RMP_ZONE     = getParameterIntValue(PARAMETERS[zeroRpmTemp]);
@@ -85,7 +88,7 @@ void calculateParametersValues() {
     WAIT_TIME.tv_nsec = ((1.0 / CONTROL_FREQUENCY) - WAIT_TIME.tv_sec) * 1000000000;
 
     if (VERBOSE) {
-        printf("Max fan temp: %dC°\nZero RMP temp: %dC°\nZero RPM delta: %dC°\nControl frequency it's %.2fHz\n", MAX_FAN_TEMP, ZERO_RMP_ZONE, ZERO_RMP_DELTA, CONTROL_FREQUENCY);
+        printf("Max fan temp: %dC°\nSteps delta: %d\nZero RMP temp: %dC°\nZero RPM delta: %dC°\nControl frequency it's %.2fHz\n", MAX_FAN_TEMP, STEPS_DELTA, ZERO_RMP_ZONE, ZERO_RMP_DELTA, CONTROL_FREQUENCY);
     }
 }
 
@@ -138,6 +141,11 @@ void parseArgs(int argc, char const *argv[]) {
                     toCheck[i] = false;
                     setParameterValue(PARAMETERS[maxFanTemp], argv[i + 1]);
                 }
+            } else if (compareParameter(PARAMETERS[stepsDelta], argv[i])) {
+                if (i + 1 < argc) {
+                    toCheck[i] = false;
+                    setParameterValue(PARAMETERS[stepsDelta], argv[i + 1]);
+                }
             } else if (compareParameter(PARAMETERS[verbose], argv[i])) {
                 setParameterValue(PARAMETERS[verbose], "1");
             } else if (compareParameter(PARAMETERS[zeroRpmDelta], argv[i])) {
@@ -177,10 +185,17 @@ void buildTemperatureSpeedMap(uint8_t (*fanSpeedFunc)(uint8_t temp)) {
     }
 
     for (size_t i = 0; i < TEMPERATURE_STEPS; i++) {
-        TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc(i);
-        if (VERBOSE) {
-            logCardName();
-            printf("Fan speed for %dC° it's %d%\n", i, TEMPERATURE_SPEED_MAP[i]);
+        TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc((i / STEPS_DELTA) * STEPS_DELTA);
+    }
+
+    if (VERBOSE) {
+        uint8_t prevSpeed = -1;
+        for (size_t i = 0; i < TEMPERATURE_STEPS; i++) {
+            if (TEMPERATURE_SPEED_MAP[i] != prevSpeed) {
+                prevSpeed = TEMPERATURE_SPEED_MAP[i];
+                logCardName();
+                printf("Fan speed for %dC° it's %d%\n", i, TEMPERATURE_SPEED_MAP[i]);
+            }
         }
     }
 }
