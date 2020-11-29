@@ -38,7 +38,9 @@ const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
 
 // Variables
 #define PARAMETERS_NUMBER 6
+#define TEMPERATURE_STEPS 101
 Parameter PARAMETERS[PARAMETERS_NUMBER];
+uint8_t TEMPERATURE_SPEED_MAP[TEMPERATURE_STEPS];
 enum PARAMETERS_NAMES {
     controlFrequency,
     help,
@@ -159,14 +161,49 @@ void parseArgs(int argc, char const *argv[]) {
 }
 
 /**
- * Return fan speed value in percentage based on the card temperature
+ * Print [card#]
+ */
+void logCardName() {
+    printf("[%s%d] ", CARD_PREFIX, ENABLED_CARD);
+}
+
+/**
+ * Build temperature speed map
+ */
+void buildTemperatureSpeedMap(uint8_t (*fanSpeedFunc)(uint8_t temp)) {
+    if (VERBOSE) {
+        logCardName();
+        printf("Generating Temperature/Speed Map\n");
+    }
+
+    for (size_t i = 0; i < TEMPERATURE_STEPS; i++) {
+        TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc(i);
+        if (VERBOSE) {
+            logCardName();
+            printf("Fan speed for %dC° it's %d%\n", i, TEMPERATURE_SPEED_MAP[i]);
+        }
+    }
+}
+
+/**
+ * Calculate and return fan speed value in percentage based on the card temperature
 */
-uint8_t fanSpeedValue(uint8_t temp) {
+uint8_t fanSpeedFunction(uint8_t temp) {
     if (temp <= ZERO_RMP_ZONE) {
         return 0;
     }
     uint8_t fanSpeed = (100.0 / (MAX_FAN_TEMP)) * temp;
     return fanSpeed > 100 ? 100 : fanSpeed;
+}
+
+/**
+ * Return fan speed value in percentage based on the card temperature
+*/
+uint8_t fanSpeedValue(uint8_t temp) {
+    if (temp >= TEMPERATURE_STEPS) {
+        temp = TEMPERATURE_STEPS - 1;
+    }
+    return TEMPERATURE_SPEED_MAP[temp];
 }
 
 /**
@@ -229,6 +266,7 @@ void enableManualFan(uint8_t cardID, uint8_t hwmonID) {
     writeToPwmEnable(cardID, hwmonID, 1);
     ENABLED_CARD  = cardID;
     CURRENT_HWMON = hwmonID;
+    buildTemperatureSpeedMap(&fanSpeedFunction);
 }
 
 /**
@@ -347,8 +385,7 @@ void childSignalsManagement() {
  * Return card temperature, works only after wiriting read command in READ_TEMP_COMMAND
 */
 uint8_t getTempValue() {
-    FILE *
-        tempReadingOutput;
+    FILE *tempReadingOutput;
     char temperature[3];
     tempReadingOutput = popen(READ_TEMP_COMMAND, "r");
     fgets(temperature, sizeof(temperature), tempReadingOutput);
@@ -366,13 +403,6 @@ uint8_t getNewTemperature(uint8_t lastTemperature) {
         temp = getTempValue();
     }
     return temp;
-}
-
-/**
- * Print [card#]
- */
-void logCardName() {
-    printf("[%s%d] ", CARD_PREFIX, ENABLED_CARD);
 }
 
 int main(int argc, char const *argv[]) {
