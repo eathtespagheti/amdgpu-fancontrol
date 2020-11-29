@@ -187,6 +187,10 @@ void buildTemperatureSpeedMap(uint8_t (*fanSpeedFunc)(uint8_t temp)) {
     for (size_t i = 0; i < TEMPERATURE_STEPS; i++) {
         TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc((i / STEPS_DELTA) * STEPS_DELTA);
     }
+    // Manual step for zero rpm mode
+    for (size_t i = ZERO_RMP_ZONE; i < ZERO_RMP_ZONE + ZERO_RMP_DELTA; i++) {
+        TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc(i);
+    }
 
     if (VERBOSE) {
         uint8_t prevSpeed = -1;
@@ -413,7 +417,7 @@ uint8_t getTempValue() {
  */
 uint8_t getNewTemperature(uint8_t lastTemperature) {
     uint8_t temp = 0;
-    temp = getTempValue();
+    temp         = getTempValue();
     while (temp == lastTemperature) {
         nanosleep(&WAIT_TIME, &WAIT_TIME);
         temp = getTempValue();
