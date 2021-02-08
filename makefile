@@ -20,11 +20,11 @@ build_folder = builds
 compiler = tcc
 binary_name = amdgpu-fancontrol
 
-$(build_folder)/$(binary_name): $(build_folder)/Parameter.o $(build_folder)/parametersAndArgsManagement.o
-	$(compiler) -o $(build_folder)/$(binary_name) $(build_folder)/Parameter.o $(build_folder)/parametersAndArgsManagement.o $(source_folder)/$(binary_name).c
+$(build_folder)/$(binary_name): $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o
+	$(compiler) -o $(build_folder)/$(binary_name) $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(source_folder)/$(binary_name).c
 
-$(build_folder)/parametersAndArgsManagement.o: $(build_folder)
-	$(MAKE) -C $(source_folder)/parametersAndArgsManagement.h
+$(build_folder)/ParametersManagement.o: $(build_folder)
+	$(MAKE) -C $(source_folder)/ParametersManagement.h
 
 $(build_folder)/Parameter.o: $(build_folder)
 	$(MAKE) -C $(source_folder)/Parameter.h

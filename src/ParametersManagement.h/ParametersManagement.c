@@ -17,7 +17,7 @@
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "parametersAndArgsManagement.h"
+#include "ParametersManagement.h"
 bool VERBOSE              = false;
 struct timespec WAIT_TIME = {
     1, 0};

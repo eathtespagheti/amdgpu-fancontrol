@@ -17,7 +17,7 @@
 
 build_folder=../../builds
 compiler=tcc
-filename=parametersAndArgsManagement
+filename=ParametersManagement
 
 $(build_folder)/$(filename).o: $(build_folder)/Parameter.o
 	$(compiler) -c -o $(build_folder)/$(filename).o $(filename).c

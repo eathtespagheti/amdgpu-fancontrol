@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "parametersAndArgsManagement.h/parametersAndArgsManagement.h"
+#include "ParametersManagement.h/ParametersManagement.h"
 #include <signal.h>
 #include <unistd.h>
 
