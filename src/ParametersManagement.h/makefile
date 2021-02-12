@@ -19,11 +19,11 @@ build_folder=../../builds
 compiler=tcc
 filename=ParametersManagement
 
-$(build_folder)/$(filename).o: $(build_folder)/Parameter.o
+$(build_folder)/$(filename).o: $(build_folder)
 	$(compiler) -c -o $(build_folder)/$(filename).o $(filename).c
 
-$(build_folder)/Parameter.o:
-	make -C ../Parameter.h
+$(build_folder):
+	mkdir -p $(build_folder)
 
 clean:
 	rm $(build_folder)/$(filename).o

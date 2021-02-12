@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Fabio Sussarellu
+ * Copyright (C) 2021 Fabio Sussarellu
  * 
  * This file is part of amdgpu-fancontrol.
  * 

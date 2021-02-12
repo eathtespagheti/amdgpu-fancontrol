@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Fabio Sussarellu
+ * Copyright (C) 2021 Fabio Sussarellu
  * 
  * This file is part of amdgpu-fancontrol.
  * 
@@ -16,85 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "ParametersManagement.h/ParametersManagement.h"
+
+#include "TemperatureSpeedMap.h/TemperatureSpeedMap.h"
 #include <signal.h>
 #include <unistd.h>
-
-// Paths
-const char AMD_VENDOR[]       = "0x1002";
-const char DEVICES_PATH[]     = "/sys/class/drm";
-const char HWMON_PREFIX[]     = "hwmon";
-const char HWMON_PATH[]       = "device/hwmon";
-const char CARD_PREFIX[]      = "card";
-const char TEMP_SENSOR[]      = "temp1_input";
-const char PWM_ENABLE[]       = "pwm1_enable";
-const char PWM[]              = "pwm1";
-const char CONFIG_FILE_PATH[] = "/etc/amd-fancontrol.conf";
-
-// Variables
-#define TEMPERATURE_STEPS 100
-uint8_t TEMPERATURE_SPEED_MAP[TEMPERATURE_STEPS];
-int8_t ENABLED_CARD        = -1;
-int8_t CURRENT_HWMON       = -1;
-char *READ_TEMP_COMMAND    = NULL;
-char *TEMP_SENSOR_LOCATION = NULL;
-
-/**
- * Print [card#]
- */
-void logCardName() {
-    printf("[%s%d] ", CARD_PREFIX, ENABLED_CARD);
-}
-
-/**
- * Build temperature speed map
- */
-void buildTemperatureSpeedMap(uint8_t (*fanSpeedFunc)(uint8_t temp)) {
-    if (VERBOSE) {
-        logCardName();
-        printf("Generating Temperature/Speed Map\n");
-    }
-
-    for (size_t i = 0; i < TEMPERATURE_STEPS; i++) {
-        TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc((i / STEPS_DELTA) * STEPS_DELTA);
-    }
-    // Manual step for zero rpm mode
-    for (size_t i = ZERO_RMP_ZONE; i < ZERO_RMP_ZONE + ZERO_RMP_DELTA; i++) {
-        TEMPERATURE_SPEED_MAP[i] = fanSpeedFunc(i);
-    }
-
-    if (VERBOSE) {
-        uint8_t prevSpeed = -1;
-        for (size_t i = 0; i < TEMPERATURE_STEPS; i++) {
-            if (TEMPERATURE_SPEED_MAP[i] != prevSpeed) {
-                prevSpeed = TEMPERATURE_SPEED_MAP[i];
-                logCardName();
-                printf("Fan speed for %dC° it's %d%\n", i, TEMPERATURE_SPEED_MAP[i]);
-            }
-        }
-    }
-}
-
-/**
- * Calculate and return fan speed value in percentage based on the card temperature
-*/
-uint8_t fanSpeedFunction(uint8_t temp) {
-    if (temp <= ZERO_RMP_ZONE) {
-        return 0;
-    }
-    uint8_t fanSpeed = (100.0 / (MAX_FAN_TEMP)) * temp;
-    return fanSpeed > 100 ? 100 : fanSpeed;
-}
-
-/**
- * Return fan speed value in percentage based on the card temperature
-*/
-uint8_t fanSpeedValue(uint8_t temp) {
-    if (temp >= TEMPERATURE_STEPS) {
-        temp = TEMPERATURE_STEPS - 1;
-    }
-    return TEMPERATURE_SPEED_MAP[temp];
-}
 
 /**
  * echo value inside the pwmControl file

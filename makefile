@@ -20,17 +20,23 @@ build_folder = builds
 compiler = tcc
 binary_name = amdgpu-fancontrol
 
-$(build_folder)/$(binary_name): $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o
-	$(compiler) -o $(build_folder)/$(binary_name) $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(source_folder)/$(binary_name).c
+$(build_folder)/$(binary_name): $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(build_folder)/TemperatureSpeedMap.o $(build_folder)/Logging.o $(build_folder)/CommonVariables.o
+	$(compiler) -o $(build_folder)/$(binary_name) $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(build_folder)/TemperatureSpeedMap.o $(build_folder)/Logging.o $(build_folder)/CommonVariables.o $(source_folder)/$(binary_name).c
 
-$(build_folder)/ParametersManagement.o: $(build_folder)
+$(build_folder)/CommonVariables.o:
+	$(MAKE) -C $(source_folder)/CommonVariables.h
+
+$(build_folder)/Logging.o:
+	$(MAKE) -C $(source_folder)/Logging.h
+
+$(build_folder)/TemperatureSpeedMap.o:
+	$(MAKE) -C $(source_folder)/TemperatureSpeedMap.h
+
+$(build_folder)/ParametersManagement.o:
 	$(MAKE) -C $(source_folder)/ParametersManagement.h
 
-$(build_folder)/Parameter.o: $(build_folder)
+$(build_folder)/Parameter.o:
 	$(MAKE) -C $(source_folder)/Parameter.h
-
-$(build_folder):
-	mkdir -p $(build_folder)
 
 clean:
 	rm $(build_folder)/$(binary_name)
