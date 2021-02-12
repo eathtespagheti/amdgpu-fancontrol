@@ -19,9 +19,16 @@ source_folder = src
 build_folder = builds
 compiler = tcc
 binary_name = amdgpu-fancontrol
+dependecies = $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(build_folder)/TemperatureSpeedMap.o $(build_folder)/Logging.o $(build_folder)/CommonVariables.o $(build_folder)/ForksManager.o $(build_folder)/CardsManager.o
 
-$(build_folder)/$(binary_name): $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(build_folder)/TemperatureSpeedMap.o $(build_folder)/Logging.o $(build_folder)/CommonVariables.o
-	$(compiler) -o $(build_folder)/$(binary_name) $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(build_folder)/TemperatureSpeedMap.o $(build_folder)/Logging.o $(build_folder)/CommonVariables.o $(source_folder)/$(binary_name).c
+$(build_folder)/$(binary_name): $(dependecies)
+	$(compiler) -o $(build_folder)/$(binary_name) $(dependecies) $(source_folder)/$(binary_name).c
+
+$(build_folder)/CardsManager.o:
+	$(MAKE) -C $(source_folder)/CardsManager.h
+
+$(build_folder)/ForksManager.o:
+	$(MAKE) -C $(source_folder)/ForksManager.h
 
 $(build_folder)/CommonVariables.o:
 	$(MAKE) -C $(source_folder)/CommonVariables.h
