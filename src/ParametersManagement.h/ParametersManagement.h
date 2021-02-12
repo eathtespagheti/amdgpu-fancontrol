@@ -28,7 +28,6 @@
 #include <wait.h>
 
 #define PARAMETERS_NUMBER 7
-Parameter PARAMETERS[PARAMETERS_NUMBER];
 enum PARAMETERS_NAMES {
     controlFrequency,
     help,
@@ -38,16 +37,15 @@ enum PARAMETERS_NAMES {
     zeroRpmDelta,
     zeroRpmTemp
 };
-uint8_t ZERO_RMP_ZONE, MAX_FAN_TEMP, STEPS_DELTA, ZERO_RMP_DELTA;
-double CONTROL_FREQUENCY;
-extern struct timespec WAIT_TIME;
-extern bool VERBOSE;
 // * EDNT
 
 void parseArgs(int argc, char const *argv[]);
 void initParameters();
 void printHelp();
+extern double CONTROL_FREQUENCY;
+extern uint8_t ZERO_RMP_ZONE, MAX_FAN_TEMP, STEPS_DELTA, ZERO_RMP_DELTA;
 extern struct timespec WAIT_TIME;
 extern bool VERBOSE;
+extern Parameter PARAMETERS[PARAMETERS_NUMBER];
 
 #endif // ! PARAMETERSMANAGEMENT_H

@@ -18,9 +18,12 @@
  */
 
 #include "ParametersManagement.h"
+Parameter PARAMETERS[PARAMETERS_NUMBER];
 bool VERBOSE              = false;
 struct timespec WAIT_TIME = {
     1, 0};
+uint8_t ZERO_RMP_ZONE, MAX_FAN_TEMP, STEPS_DELTA, ZERO_RMP_DELTA;
+double CONTROL_FREQUENCY;
 
 /**
  * Print help message
