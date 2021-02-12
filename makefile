@@ -19,31 +19,15 @@ source_folder = src
 build_folder = builds
 compiler = tcc
 binary_name = amdgpu-fancontrol
-dependecies = $(build_folder)/Parameter.o $(build_folder)/ParametersManagement.o $(build_folder)/TemperatureSpeedMap.o $(build_folder)/Logging.o $(build_folder)/CommonVariables.o $(build_folder)/ForksManager.o $(build_folder)/CardsManager.o
+dependecies = Parameter ParametersManagement TemperatureSpeedMap Logging CommonVariables ForksManager CardsManager
 
-$(build_folder)/$(binary_name): $(dependecies)
-	$(compiler) -o $(build_folder)/$(binary_name) $(dependecies) $(source_folder)/$(binary_name).c
+$(build_folder)/$(binary_name): dependeciesCompiler
+	$(compiler) -o $(build_folder)/$(binary_name) $(build_folder)/*.o $(source_folder)/$(binary_name).c
 
-$(build_folder)/CardsManager.o:
-	$(MAKE) -C $(source_folder)/CardsManager.h
-
-$(build_folder)/ForksManager.o:
-	$(MAKE) -C $(source_folder)/ForksManager.h
-
-$(build_folder)/CommonVariables.o:
-	$(MAKE) -C $(source_folder)/CommonVariables.h
-
-$(build_folder)/Logging.o:
-	$(MAKE) -C $(source_folder)/Logging.h
-
-$(build_folder)/TemperatureSpeedMap.o:
-	$(MAKE) -C $(source_folder)/TemperatureSpeedMap.h
-
-$(build_folder)/ParametersManagement.o:
-	$(MAKE) -C $(source_folder)/ParametersManagement.h
-
-$(build_folder)/Parameter.o:
-	$(MAKE) -C $(source_folder)/Parameter.h
+dependeciesCompiler:
+	@ for dependency in $(dependecies) ; do \
+    	C_COMPILER=$(compiler) $(MAKE) -C $(source_folder)/$$dependency.h ; \
+	done
 
 clean:
 	rm $(build_folder)/$(binary_name)

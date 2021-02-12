@@ -15,12 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with amdgpu-fancontrol.  If not, see <http://www.gnu.org/licenses/>.
 
+ifeq ($(C_COMPILER),)
+  $(error C_COMPILER is not set)
+endif
 build_folder=../../builds
-compiler=tcc
 filename=Logging
 
 $(build_folder)/$(filename).o: $(build_folder)
-	$(compiler) -c -o $(build_folder)/$(filename).o $(filename).c
+	$(C_COMPILER) -c -o $(build_folder)/$(filename).o $(filename).c
 
 $(build_folder):
 	mkdir -p $(build_folder)
